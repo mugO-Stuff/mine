@@ -2,14 +2,14 @@
 
 {% block content %}
 <div class="month-nav">
-    <a class="month-link" href="{{ url_for('index', year=prev_year, month=prev_month, view=view_mode) }}">← Mês anterior</a>
-    <span class="month-title">Agendamentos de {{ "%02d" % month }}/{{ year }}</span>
-    <a class="month-link" href="{{ url_for('index', year=next_year, month=next_month, view=view_mode) }}">Próximo mês →</a>
+    <a class="month-link" href="{{ url_for('index', year=prev_year, month=prev_month, view=view_mode) }}">← Mês Anterior</a>
+    <span class="month-title">Mês de referência: {{ "%02d" % month }}/{{ year }}</span>
+    <a class="month-link" href="{{ url_for('index', year=next_year, month=next_month, view=view_mode) }}">Próximo Mês →</a>
 </div>
 
 <div class="view-options">
     <a class="view-btn {% if view_mode == 'calendar' %}active{% endif %}" href="{{ url_for('index', year=year, month=month, view='calendar') }}">📅 Calendário</a>
-    <a class="view-btn {% if view_mode == 'line' %}active{% endif %}" href="{{ url_for('index', year=year, month=month, view='line') }}">📋 Linha</a>
+    <a class="view-btn {% if view_mode == 'line' %}active{% endif %}" href="{{ url_for('index', year=year, month=month, view='line') }}">📋 Lista</a>
 </div>
 
 {% if view_mode == 'line' %}
@@ -17,7 +17,7 @@
         <input type="hidden" name="year" value="{{ year }}">
         <input type="hidden" name="month" value="{{ month }}">
         <input type="hidden" name="view" value="line">
-        <label for="medico_filter">Filtrar por médico:</label>
+        <label for="medico_filter">Filtrar por Médico:</label>
         <select name="medico" id="medico_filter">
             <option value="" {% if not doctor_filter %}selected{% endif %}>Todos</option>
             {% for medico in medicos %}
@@ -25,7 +25,7 @@
             {% endfor %}
         </select>
         <label for="protocolo_filter">Protocolo:</label>
-        <input type="text" id="protocolo_filter" name="protocolo" value="{{ protocol_filter }}" placeholder="Buscar protocolo">
+        <input type="text" id="protocolo_filter" name="protocolo" value="{{ protocol_filter }}" placeholder="Buscar Protocolo">
         <button type="submit">Aplicar</button>
         {% if doctor_filter or protocol_filter %}
             <a class="clear-filter" href="{{ url_for('index', year=year, month=month, view='line') }}">Limpar</a>
@@ -57,7 +57,7 @@
                             </div>
                         {% endfor %}
                     {% else %}
-                        <p class="no-appointments">Sem agendamentos</p>
+                        <p class="no-appointments">Sem Agendamentos</p>
                     {% endif %}
                 </div>
             </div>
@@ -91,7 +91,7 @@
                     modalBody.innerHTML = '';
 
                     if (appointments.length === 0) {
-                        modalBody.innerHTML = '<p>Nenhum agendamento registrado.</p>';
+                        modalBody.innerHTML = '<p>Nenhum agendamento.</p>';
                     } else {
                         appointments.forEach(function(appt) {
                             const hora = appt.dataset.hora;
