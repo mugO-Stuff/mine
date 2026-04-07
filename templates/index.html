@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="month-nav">
+    <a class="month-link" href="{{ url_for('index', year=prev_year, month=prev_month, view=view_mode) }}">← Mês anterior</a>
+    <span class="month-title">Agendamentos de {{ "%02d" % month }}/{{ year }}</span>
+    <a class="month-link" href="{{ url_for('index', year=next_year, month=next_month, view=view_mode) }}">Próximo mês →</a>
+</div>
+
+<div class="view-options">
+    <a class="view-btn {% if view_mode == 'calendar' %}active{% endif %}" href="{{ url_for('index', year=year, month=month, view='calendar') }}">📅 Calendário</a>
+    <a class="view-btn {% if view_mode == 'line' %}active{% endif %}" href="{{ url_for('index', year=year, month=month, view='line') }}">📋 Linha</a>
+</div>
+
+{% if view_mode == 'line' %}
+    <form method="get" class="filter-form">
+        <input type="hidden" name="year" value="{{ year }}">
+        <input type="hidden" name="month" value="{{ month }}">
+        <input type="hidden" name="view" value="line">
+        <label for="medico_filter">Filtrar por médico:</label>
+        <select name="medico" id="medico_filter">
+            <option value="" {% if not doctor_filter %}selected{% endif %}>Todos</option>
+            {% for medico in medicos %}
+                <option value="{{ medico.nome }}" {% if medico.nome == doctor_filter %}selected{% endif %}>{{ medico.nome }}</option>
+            {% endfor %}
+        </select>
+        <label for="protocolo_filter">Protocolo:</label>
+        <input type="text" id="protocolo_filter" name="protocolo" value="{{ protocol_filter }}" placeholder="Buscar protocolo">
+        <button type="submit">Aplicar</button>
+        {% if doctor_filter or protocol_filter %}
+            <a class="clear-filter" href="{{ url_for('index', year=year, month=month, view='line') }}">Limpar</a>
+        {% endif %}
+    </form>
+{% endif %}
+
+{% if 'user_id' in session and current_user.grau in (2, 3) %}
+    <a class="new-appointment" href="{{ url_for('create') }}">Novo Agendamento</a>
+{% endif %}
+
+{% if view_mode == 'calendar' %}
+    <div class="calendar">
+        {% for date, appts in appointments.items() %}
+            <div class="day day-clickable" data-date="{{ date.strftime('%d/%m/%Y') }}">
+                <h3>{{ date.day }}</h3>
+                <div class="appointments-list">
+                    {% if appts %}
+                        {% for appt in appts %}
+                            <div class="appointment {% if reminder_status.get(appt.id) %}{{ reminder_status.get(appt.id) }}{% endif %}" data-hora="{{ appt.hora.strftime('%H:%M') }}" data-paciente="{{ appt.nome_paciente }}" data-medico="{{ appt.nome_medico }}" data-crm="{{ appt.crm_medico }}" data-procedimento="{{ appt.procedimento }}" data-cid="{{ appt.cid_procedimento }}" data-observacao="{{ appt.observacao or '-' }}" data-protocolo="{{ appt.protocolo or '' }}"{% if 'user_id' in session and current_user.grau in (2, 3) %} data-internacao-url="{{ url_for('internacao', id=appt.id) }}" data-internacao-pending="{{ '1' if not appt.sala_cirurgica or not appt.quarto else '0' }}"{% endif %}>
+                                <p>{{ appt.hora.strftime('%H:%M') }} - {{ appt.nome_paciente }}</p>
+                                {% if 'user_id' in session and current_user.grau in (2, 3) %}
+                                    <div class="appointment-actions">
+                                        <a href="{{ url_for('internacao', id=appt.id) }}" class="internalacao-btn {% if appt.data == today and (not appt.sala_cirurgica or not appt.quarto) %}pending{% endif %}">Internação{% if appt.data == today and (not appt.sala_cirurgica or not appt.quarto) %} ?{% endif %}</a>
+                                        <a href="{{ url_for('edit', id=appt.id) }}">Editar</a>
+                                        <a href="{{ url_for('delete', id=appt.id) }}">Excluir</a>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="no-appointments">Sem agendamentos</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div id="day-modal" class="modal">
+        <div class="modal-content">
+            <button type="button" class="modal-close">&times;</button>
+            <h3 id="modal-title"></h3>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('day-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalBody = document.getElementById('modal-body');
+            const closeBtn = modal.querySelector('.modal-close');
+
+            document.querySelectorAll('.calendar .day-clickable').forEach(function(day) {
+                day.addEventListener('click', function(event) {
+                    if (event.target.closest('a')) {
+                        return;
+                    }
+                    const date = this.dataset.date;
+                    const appointments = Array.from(this.querySelectorAll('.appointment'));
+
+                    modalTitle.textContent = 'Agendamentos de ' + date;
+                    modalBody.innerHTML = '';
+
+                    if (appointments.length === 0) {
+                        modalBody.innerHTML = '<p>Nenhum agendamento registrado.</p>';
+                    } else {
+                        appointments.forEach(function(appt) {
+                            const hora = appt.dataset.hora;
+                            const paciente = appt.dataset.paciente;
+                            const medico = appt.dataset.medico;
+                            const crm = appt.dataset.crm;
+                            const procedimento = appt.dataset.procedimento;
+                            const cid = appt.dataset.cid;
+                            const observacao = appt.dataset.observacao;
+                            const protocolo = appt.dataset.protocolo;
+                            const item = document.createElement('div');
+                            item.className = 'modal-appointment';
+                            item.innerHTML = '<h4>' + hora + ' - ' + paciente + '</h4>' +
+                                '<p><strong>Protocolo:</strong> ' + (protocolo || '-') + '</p>' +
+                                '<p><strong>Médico:</strong> ' + medico + ' | <strong>CRM:</strong> ' + crm + '</p>' +
+                                '<p><strong>Procedimento:</strong> ' + procedimento + ' | <strong>CID:</strong> ' + cid + '</p>' +
+                                '<p><strong>Observação:</strong> ' + observacao + '</p>';
+                            if (appt.dataset.internacaoUrl) {
+                                const pending = appt.dataset.internacaoPending === '1';
+                                const internacaoBtn = document.createElement('a');
+                                internacaoBtn.href = appt.dataset.internacaoUrl;
+                                internacaoBtn.className = 'internalacao-btn' + (pending ? ' pending' : '');
+                                internacaoBtn.textContent = pending ? 'Internação ?' : 'Internação';
+                                item.appendChild(internacaoBtn);
+                            }
+                            modalBody.appendChild(item);
+                        });
+                    }
+
+                    modal.classList.add('visible');
+                });
+            });
+
+            closeBtn.addEventListener('click', function() {
+                modal.classList.remove('visible');
+            });
+
+            modal.addEventListener('click', function(event) {
+                if (event.target === modal) {
+                    modal.classList.remove('visible');
+                }
+            });
+        });
+    </script>
+{% else %}
+    <div class="line-view">
+        <table class="appointments-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Dia</th>
+                    <th>Hora</th>
+                    <th>Paciente</th>
+                    <th>Protocolo</th>
+                    <th>Médico</th>
+                    <th>CRM</th>
+                    <th>Procedimento</th>
+                    <th>CID</th>
+                    <th>Observação</th>
+                    {% if 'user_id' in session and current_user.grau in (2, 3) %}
+                        <th>Ações</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% if all_appointments %}
+                    {% set ns = namespace(prev_date=None) %}
+                    {% for appt in all_appointments %}
+                        {% if ns.prev_date != appt.data %}
+                            {% if ns.prev_date is not none %}
+                                <tr class="date-separator"><td colspan="{% if 'user_id' in session and current_user.grau in (2, 3) %}10{% else %}9{% endif %}"></td></tr>
+                            {% endif %}
+                            {% set ns.prev_date = appt.data %}
+                        {% endif %}
+                        <tr class="{% if reminder_status.get(appt.id) %}{{ reminder_status.get(appt.id) }}{% endif %}">
+                            <td>{{ appt.data.strftime('%d/%m/%Y') }}</td>
+                            <td>{{ ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'][appt.data.weekday()] }}</td>
+                            <td>{{ appt.hora.strftime('%H:%M') }}</td>
+                            <td>{{ appt.nome_paciente }}</td>
+                            <td>{{ appt.protocolo or '-' }}</td>
+                            <td><span style="background-color: {{ medico_colors.get(appt.nome_medico, '#004d40') }}; color: white; padding: 2px 4px; border-radius: 3px;">{{ appt.nome_medico }}</span></td>
+                            <td>{{ appt.crm_medico }}</td>
+                            <td>{{ appt.procedimento }}</td>
+                            <td>{{ appt.cid_procedimento }}</td>
+                            <td>{{ appt.observacao or '-' }}</td>
+                            {% if 'user_id' in session and current_user.grau in (2, 3) %}
+                                <td class="actions-cell">
+                                    <a href="{{ url_for('internacao', id=appt.id) }}" class="internalacao-btn {% if appt.data == today and (not appt.sala_cirurgica or not appt.quarto) %}pending{% endif %}">Internação{% if appt.data == today and (not appt.sala_cirurgica or not appt.quarto) %} ?{% endif %}</a>
+                                    <a href="{{ url_for('edit', id=appt.id) }}">Editar</a>
+                                    <a href="{{ url_for('delete', id=appt.id) }}">Excluir</a>
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="9" class="no-data">Sem agendamentos neste mês</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+{% endif %}
+{% endblock %}
