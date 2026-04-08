@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header patient-header">
+    <div>
+        <h2>Informações de Pagamento</h2>
+        <p class="patient-subtitle">{{ agendamento.nome_paciente }} | ID {{ agendamento.id }} | Nº Procedimento {{ agendamento.numero_procedimento or '-' }}</p>
+    </div>
+    <div class="patient-header-actions">
+        <a class="secondary-btn" href="{{ url_for('index') }}">Voltar para Agendamentos</a>
+        {% if can_manage %}
+            <a class="secondary-btn" href="{{ url_for('internacao', id=agendamento.id) }}">Internação</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="patient-grid">
+    <section class="patient-card">
+        <h3>Resumo do Agendamento</h3>
+        <div class="patient-details-grid">
+            <div>
+                <span class="detail-label">ID do Agendamento</span>
+                <strong>#{{ agendamento.id }}</strong>
+            </div>
+            <div>
+                <span class="detail-label">Número do Procedimento</span>
+                <strong>{{ agendamento.numero_procedimento or '-' }}</strong>
+            </div>
+            <div>
+                <span class="detail-label">Protocolo</span>
+                <strong>{{ agendamento.protocolo or '-' }}</strong>
+            </div>
+            <div>
+                <span class="detail-label">Médico</span>
+                <strong>{{ agendamento.nome_medico }}</strong>
+            </div>
+            <div>
+                <span class="detail-label">CRM</span>
+                <strong>{{ agendamento.crm_medico }}</strong>
+            </div>
+            <div>
+                <span class="detail-label">Procedimento</span>
+                <strong>{{ agendamento.procedimento }}</strong>
+            </div>
+            <div>
+                <span class="detail-label">Data da Cirurgia</span>
+                <strong>{{ agendamento.data.strftime('%d/%m/%Y') }} às {{ agendamento.hora.strftime('%H:%M') }}</strong>
+            </div>
+            <div>
+                <span class="detail-label">Sala Cirúrgica</span>
+                <strong>{{ agendamento.sala_cirurgica or '-' }}</strong>
+            </div>
+            <div>
+                <span class="detail-label">Quarto</span>
+                <strong>{{ agendamento.quarto or '-' }}</strong>
+            </div>
+        </div>
+        <div class="patient-observation">
+            <span class="detail-label">Observação</span>
+            <p>{{ agendamento.observacao or 'Sem observações cadastradas.' }}</p>
+        </div>
+
+        {% if can_manage %}
+        <form method="post" class="patient-form protocol-form">
+            <input type="hidden" name="action" value="protocolo">
+            <label for="protocolo">Protocolo</label>
+            <input type="text" id="protocolo" name="protocolo" value="{{ agendamento.protocolo or '' }}" placeholder="Preencha manualmente o protocolo">
+            <button type="submit">Salvar Protocolo</button>
+        </form>
+        {% endif %}
+    </section>
+
+    {% if can_access_pagamentos %}
+        <section class="patient-card">
+            <div class="section-heading">
+                <h3>Comprovantes</h3>
+                <span class="summary-pill">{{ comprovantes|length }} registro(s)</span>
+            </div>
+
+            {% if can_manage %}
+            <form method="post" class="patient-form" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="comprovante">
+                <label for="numero_procedimento">Número do Procedimento</label>
+                <div class="procedure-lookup-row">
+                    <input type="text" id="numero_procedimento" name="numero_procedimento" value="{{ agendamento.numero_procedimento or '' }}" placeholder="Ex.: P000123" required>
+                    <button type="button" id="buscar_procedimento">Buscar</button>
+                </div>
+                <label for="nome_medico">Nome do Médico</label>
+                <input type="text" id="nome_medico" name="nome_medico" value="{{ agendamento.nome_medico }}" required>
+
+                <label for="procedimento">Procedimento</label>
+                <input type="text" id="procedimento" name="procedimento" value="{{ agendamento.procedimento }}" required>
+
+                <label for="data_cirurgia">Data da Cirurgia</label>
+                <input type="date" id="data_cirurgia" name="data_cirurgia" value="{{ agendamento.data.strftime('%Y-%m-%d') }}" required>
+
+                <label for="valor">Valor</label>
+                <input type="text" id="valor" name="valor" placeholder="Ex.: 1500,00" required>
+
+                <label for="data_pagamento">Data do Pagamento</label>
+                <input type="date" id="data_pagamento" name="data_pagamento">
+
+                <label for="pagante">Pagante</label>
+                <input type="text" id="pagante" name="pagante" required>
+
+                <label for="meio_pagamento">Meio de Pagamento</label>
+                <select id="meio_pagamento" name="meio_pagamento" required>
+                    <option value="">Selecione</option>
+                    <option value="Pix">Pix</option>
+                    <option value="Cartão de Crédito">Cartão de Crédito</option>
+                    <option value="Cartão de Débito">Cartão de Débito</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                    <option value="Transferência">Transferência</option>
+                    <option value="Boleto">Boleto</option>
+                </select>
+
+                <label for="arquivo_comprovante">Anexar Comprovante (PDF)</label>
+                <input type="file" id="arquivo_comprovante" name="arquivo_comprovante" accept=".pdf,application/pdf">
+
+                <button type="submit">Salvar Comprovante</button>
+            </form>
+            {% endif %}
+
+            {% if comprovantes %}
+            <div class="comprovante-list">
+                {% for comprovante in comprovantes %}
+                <article class="comprovante-card">
+                    <div class="comprovante-header">
+                        <strong>{{ comprovante.procedimento }}</strong>
+                        <span class="status-badge status-{{ comprovante.status }}">{{ comprovante.status|capitalize }}</span>
+                    </div>
+                    <div class="comprovante-grid">
+                        <div>
+                            <span class="detail-label">Médico</span>
+                            <p>{{ comprovante.nome_medico }}</p>
+                        </div>
+                        <div>
+                            <span class="detail-label">Cirurgia</span>
+                            <p>{{ comprovante.data_cirurgia.strftime('%d/%m/%Y') }}</p>
+                        </div>
+                        <div>
+                            <span class="detail-label">Valor</span>
+                            <p>R$ {{ '%.2f'|format(comprovante.valor)|replace('.', ',') }}</p>
+                        </div>
+                        <div>
+                            <span class="detail-label">Pagamento</span>
+                            <p>{{ comprovante.data_pagamento.strftime('%d/%m/%Y') if comprovante.data_pagamento else 'Aguardando baixa' }}</p>
+                        </div>
+                        <div>
+                            <span class="detail-label">Pagante</span>
+                            <p>{{ comprovante.pagante }}</p>
+                        </div>
+                        <div>
+                            <span class="detail-label">Meio de Pagamento</span>
+                            <p>{{ comprovante.meio_pagamento }}</p>
+                        </div>
+                        <div>
+                            <span class="detail-label">Arquivo</span>
+                            {% if comprovante.arquivo_comprovante %}
+                                <p><a class="action-link" href="{{ url_for('static', filename=comprovante.arquivo_comprovante) }}" target="_blank" rel="noopener">Abrir PDF</a></p>
+                            {% else %}
+                                <p>Sem anexo</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+            {% else %}
+                <p class="empty-state">Nenhum comprovante registrado para este paciente.</p>
+            {% endif %}
+        </section>
+    {% endif %}
+</div>
+
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <ul class="flash-messages">
+            {% for message in messages %}
+                <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endwith %}
+
+{% if can_access_pagamentos %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var numeroInput = document.getElementById('numero_procedimento');
+    var buscarBtn = document.getElementById('buscar_procedimento');
+    if (!numeroInput || !buscarBtn) {
+        return;
+    }
+
+    function preencherDadosProcedimento() {
+        var numero = (numeroInput.value || '').trim().toUpperCase();
+        if (!numero) {
+            return;
+        }
+
+        fetch('/api/agendamento-por-procedimento?numero=' + encodeURIComponent(numero))
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('not_found');
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                if (!data.ok) {
+                    throw new Error('invalid');
+                }
+                document.getElementById('nome_medico').value = data.nome_medico || '';
+                document.getElementById('procedimento').value = data.procedimento || '';
+                document.getElementById('data_cirurgia').value = data.data_cirurgia || '';
+            })
+            .catch(function() {
+                alert('Número de procedimento não encontrado.');
+            });
+    }
+
+    buscarBtn.addEventListener('click', preencherDadosProcedimento);
+    numeroInput.addEventListener('blur', preencherDadosProcedimento);
+});
+</script>
+{% endif %}
+{% endblock %}

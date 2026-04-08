@@ -1,14 +1,33 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func, text
 from datetime import datetime, date, timedelta
 from collections import Counter
 import calendar
+import os
+from werkzeug.utils import secure_filename
+
+PT_BR_MONTH_NAMES = {
+    1: 'Janeiro',
+    2: 'Fevereiro',
+    3: 'Março',
+    4: 'Abril',
+    5: 'Maio',
+    6: 'Junho',
+    7: 'Julho',
+    8: 'Agosto',
+    9: 'Setembro',
+    10: 'Outubro',
+    11: 'Novembro',
+    12: 'Dezembro',
+}
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///agendamentos.db'
 db = SQLAlchemy(app)
+
+UPLOAD_COMPROVANTES_FOLDER = os.path.join('uploads', 'comprovantes')
 
 # Models
 class User(db.Model):
@@ -17,10 +36,19 @@ class User(db.Model):
     cargo = db.Column(db.String(100), nullable=False)
     senha = db.Column(db.String(100), nullable=False)  # numeric password
     status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
-    grau = db.Column(db.Integer, default=1)  # 1=view-only, 2=edit appointments, 3=admin
+    grau = db.Column(db.Integer, default=1)  # nivel: 1=view-only, 2=edit appointments, 3=admin
+
+    @property
+    def nivel(self):
+        return self.grau
+
+    @nivel.setter
+    def nivel(self, value):
+        self.grau = value
 
 class Agendamento(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    numero_procedimento = db.Column(db.String(40), unique=True, index=True)
     nome_paciente = db.Column(db.String(100), nullable=False)
     nome_medico = db.Column(db.String(100), nullable=False)
     crm_medico = db.Column(db.Integer, nullable=False)
@@ -32,6 +60,7 @@ class Agendamento(db.Model):
     sala_cirurgica = db.Column(db.String(50))
     quarto = db.Column(db.String(50))
     protocolo = db.Column(db.String(50))
+    comprovantes = db.relationship('Comprovante', backref='agendamento', lazy=True, cascade='all, delete-orphan')
 
 class Medico(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -43,6 +72,20 @@ class Procedimento(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
     cid = db.Column(db.String(20), unique=True, nullable=False)
+
+class Comprovante(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    agendamento_id = db.Column(db.Integer, db.ForeignKey('agendamento.id'), nullable=False)
+    nome_medico = db.Column(db.String(100), nullable=False)
+    procedimento = db.Column(db.String(100), nullable=False)
+    data_cirurgia = db.Column(db.Date, nullable=False)
+    valor = db.Column(db.Float, nullable=False)
+    data_pagamento = db.Column(db.Date)
+    pagante = db.Column(db.String(100), nullable=False)
+    meio_pagamento = db.Column(db.String(50), nullable=False)
+    arquivo_comprovante = db.Column(db.String(255))
+    status = db.Column(db.String(20), default='pendente')
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
 
 @app.context_processor
 def inject_user():
@@ -59,6 +102,71 @@ def normalize_month(year, month):
         month -= 12
         year += 1
     return year, month
+
+def user_can_manage_agendamentos(user):
+    return bool(user and (user.cargo == 'admin' or user.grau in (2, 3)))
+
+def user_can_manage_internacao(user):
+    return bool(user and user.nivel in (2, 3))
+
+def user_can_access_pagamentos(user):
+    return bool(user and user.grau == 3)
+
+def parse_currency_value(raw_value):
+    normalized = raw_value.strip().replace('R$', '').replace(' ', '')
+    if not normalized:
+        raise ValueError('Valor não informado.')
+    if ',' in normalized:
+        normalized = normalized.replace('.', '').replace(',', '.')
+    return float(normalized)
+
+def build_numero_procedimento(agendamento_id):
+    # Simple globally-unique number derived from agendamento ID.
+    return f"P{agendamento_id:06d}"
+
+def preencher_numero_procedimento_faltante():
+    agendamentos_sem_numero = Agendamento.query.filter(
+        Agendamento.numero_procedimento.is_(None)
+    ).all()
+
+    if not agendamentos_sem_numero:
+        return 0
+
+    for agendamento in agendamentos_sem_numero:
+        agendamento.numero_procedimento = build_numero_procedimento(agendamento.id)
+
+    db.session.commit()
+    return len(agendamentos_sem_numero)
+
+def normalizar_numero_procedimento():
+    agendamentos = Agendamento.query.all()
+    alterados = 0
+    for agendamento in agendamentos:
+        numero_esperado = build_numero_procedimento(agendamento.id)
+        if agendamento.numero_procedimento != numero_esperado:
+            agendamento.numero_procedimento = numero_esperado
+            alterados += 1
+    if alterados:
+        db.session.commit()
+    return alterados
+
+def save_comprovante_pdf(uploaded_file):
+    filename = secure_filename(uploaded_file.filename or '')
+    if not filename:
+        return None
+
+    if not filename.lower().endswith('.pdf'):
+        raise ValueError('Somente arquivos PDF são permitidos para comprovante.')
+
+    timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S%f')
+    stored_name = f"comprovante_{timestamp}.pdf"
+    rel_path = os.path.join(UPLOAD_COMPROVANTES_FOLDER, stored_name)
+    abs_path = os.path.join(app.static_folder, rel_path)
+
+    os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+    uploaded_file.save(abs_path)
+
+    return rel_path.replace('\\', '/')
 
 @app.route('/')
 def index():
@@ -121,6 +229,7 @@ def index():
         all_dates=all_dates,
         year=year,
         month=month,
+        month_name=PT_BR_MONTH_NAMES[month],
         view_mode=view_mode,
         prev_year=prev_year,
         prev_month=prev_month,
@@ -171,6 +280,121 @@ def register():
 def logout():
     session.pop('user_id', None)
     return redirect(url_for('index'))
+
+@app.route('/perfil', methods=['GET', 'POST'])
+def perfil():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if not user:
+        session.pop('user_id', None)
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        action = request.form.get('action')
+
+        if action == 'dados':
+            nome = request.form.get('nome', '').strip()
+            cargo = request.form.get('cargo', '').strip()
+
+            if not nome or not cargo:
+                flash('Nome e cargo são obrigatórios.')
+                return redirect(url_for('perfil'))
+
+            existing_user = User.query.filter(User.nome == nome, User.id != user.id).first()
+            if existing_user:
+                flash('Já existe outro usuário com este nome.')
+                return redirect(url_for('perfil'))
+
+            user.nome = nome
+            user.cargo = cargo
+            db.session.commit()
+            flash('Dados do perfil atualizados com sucesso.')
+            return redirect(url_for('perfil'))
+
+        if action == 'senha':
+            senha_atual = request.form.get('senha_atual', '')
+            nova_senha = request.form.get('nova_senha', '')
+            confirmar_senha = request.form.get('confirmar_senha', '')
+
+            if senha_atual != user.senha:
+                flash('Senha atual incorreta.')
+                return redirect(url_for('perfil'))
+
+            if len(nova_senha) < 6 or not nova_senha.isdigit():
+                flash('A nova senha deve ter pelo menos 6 dígitos numéricos.')
+                return redirect(url_for('perfil'))
+
+            if nova_senha != confirmar_senha:
+                flash('A confirmação da senha não confere.')
+                return redirect(url_for('perfil'))
+
+            user.senha = nova_senha
+            db.session.commit()
+            flash('Senha alterada com sucesso.')
+            return redirect(url_for('perfil'))
+
+        flash('Ação inválida.')
+        return redirect(url_for('perfil'))
+
+    return render_template('perfil.html', user=user, managed_by_admin=False)
+
+@app.route('/admin/perfil_usuario/<int:user_id>', methods=['GET', 'POST'])
+def perfil_usuario(user_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    admin_user = User.query.get(session['user_id'])
+    if not admin_user or (admin_user.cargo != 'admin' and admin_user.grau != 3):
+        flash('Acesso negado')
+        return redirect(url_for('index'))
+
+    user = User.query.get_or_404(user_id)
+
+    if request.method == 'POST':
+        action = request.form.get('action')
+
+        if action == 'dados':
+            nome = request.form.get('nome', '').strip()
+            cargo = request.form.get('cargo', '').strip()
+
+            if not nome or not cargo:
+                flash('Nome e cargo são obrigatórios.')
+                return redirect(url_for('perfil_usuario', user_id=user.id))
+
+            existing_user = User.query.filter(User.nome == nome, User.id != user.id).first()
+            if existing_user:
+                flash('Já existe outro usuário com este nome.')
+                return redirect(url_for('perfil_usuario', user_id=user.id))
+
+            user.nome = nome
+            user.cargo = cargo
+            db.session.commit()
+            flash('Dados do perfil atualizados com sucesso.')
+            return redirect(url_for('perfil_usuario', user_id=user.id))
+
+        if action == 'senha':
+            nova_senha = request.form.get('nova_senha', '')
+            confirmar_senha = request.form.get('confirmar_senha', '')
+
+            if len(nova_senha) < 6 or not nova_senha.isdigit():
+                flash('A nova senha deve ter pelo menos 6 dígitos numéricos.')
+                return redirect(url_for('perfil_usuario', user_id=user.id))
+
+            if nova_senha != confirmar_senha:
+                flash('A confirmação da senha não confere.')
+                return redirect(url_for('perfil_usuario', user_id=user.id))
+
+            user.senha = nova_senha
+            db.session.commit()
+            flash('Senha alterada com sucesso.')
+            return redirect(url_for('perfil_usuario', user_id=user.id))
+
+        flash('Ação inválida.')
+        return redirect(url_for('perfil_usuario', user_id=user.id))
+
+    return render_template('perfil.html', user=user, managed_by_admin=True)
 
 @app.route('/admin')
 def admin():
@@ -308,8 +532,9 @@ def approve(user_id):
     flash(f'Usuário {pending_user.nome} aprovado.')
     return redirect(url_for('admin'))
 
+@app.route('/admin/set_user_level/<int:user_id>', methods=['POST'])
 @app.route('/admin/set_user_grade/<int:user_id>', methods=['POST'])
-def set_user_grade(user_id):
+def set_user_level(user_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     user = User.query.get(session['user_id'])
@@ -318,16 +543,45 @@ def set_user_grade(user_id):
         return redirect(url_for('index'))
     target_user = User.query.get_or_404(user_id)
     try:
-        grade = int(request.form['grau'])
-    except (ValueError, KeyError):
-        flash('Grau inválido.')
+        level_raw = request.form.get('nivel', request.form.get('grau', ''))
+        level = int(level_raw)
+    except (ValueError, TypeError):
+        flash('Nível inválido.')
         return redirect(url_for('admin'))
-    if grade not in (1, 2, 3):
-        flash('Grau inválido.')
+    if level not in (1, 2, 3):
+        flash('Nível inválido.')
         return redirect(url_for('admin'))
-    target_user.grau = grade
+    target_user.nivel = level
     db.session.commit()
-    flash(f'Grau do usuário {target_user.nome} atualizado para {grade}.')
+    flash(f'Nível do usuário {target_user.nome} atualizado para {level}.')
+    return redirect(url_for('admin'))
+
+@app.route('/admin/set_user_levels_bulk', methods=['POST'])
+def set_user_levels_bulk():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    user = User.query.get(session['user_id'])
+    if not user or (user.cargo != 'admin' and user.grau != 3):
+        flash('Acesso negado')
+        return redirect(url_for('index'))
+    
+    updated_count = 0
+    for key, value in request.form.items():
+        if key.startswith('nivel-'):
+            try:
+                user_id = int(key.split('-')[1])
+                level = int(value)
+                if level in (1, 2, 3):
+                    target_user = User.query.get(user_id)
+                    if target_user:
+                        target_user.nivel = level
+                        updated_count += 1
+            except (ValueError, IndexError):
+                pass
+    
+    db.session.commit()
+    if updated_count > 0:
+        flash(f'{updated_count} nível(is) de acesso atualizado(s).')
     return redirect(url_for('admin'))
 
 @app.route('/reject/<int:user_id>')
@@ -386,6 +640,8 @@ def create():
             observacao=request.form['observacao']
         )
         db.session.add(agendamento)
+        db.session.flush()
+        agendamento.numero_procedimento = build_numero_procedimento(agendamento.id)
         db.session.commit()
         return redirect(url_for('index'))
     return render_template('edit.html', agendamento=None, medicos=medicos, procedimentos=procedimentos)
@@ -451,18 +707,218 @@ def internacao(id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     user = User.query.get(session['user_id'])
-    if not user or user.grau not in (2, 3):
+    if not user_can_manage_internacao(user):
         flash('Acesso negado')
         return redirect(url_for('index'))
     agendamento = Agendamento.query.get_or_404(id)
     if request.method == 'POST':
         agendamento.sala_cirurgica = request.form.get('sala_cirurgica', '').strip() or None
         agendamento.quarto = request.form.get('quarto', '').strip() or None
-        agendamento.protocolo = request.form.get('protocolo', '').strip() or None
         db.session.commit()
         flash('Dados de internação atualizados.')
         return redirect(url_for('index'))
     return render_template('internacao.html', agendamento=agendamento)
+
+@app.route('/paciente/<int:id>', methods=['GET', 'POST'])
+def paciente(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if not user:
+        session.pop('user_id', None)
+        return redirect(url_for('login'))
+
+    agendamento = Agendamento.query.get_or_404(id)
+
+    can_manage = user_can_manage_agendamentos(user)
+    can_access_pagamentos = user_can_access_pagamentos(user)
+
+    if request.method == 'POST':
+        if not can_manage:
+            flash('Acesso negado')
+            return redirect(url_for('paciente', id=agendamento.id))
+
+        action = request.form.get('action')
+
+        if action == 'protocolo':
+            agendamento.protocolo = request.form.get('protocolo', '').strip() or None
+            db.session.commit()
+            flash('Protocolo atualizado com sucesso.')
+            return redirect(url_for('paciente', id=agendamento.id))
+
+        if action != 'comprovante':
+            flash('Ação inválida.')
+            return redirect(url_for('paciente', id=agendamento.id))
+
+        if not can_access_pagamentos:
+            flash('Acesso negado para a aba de pagamento.')
+            return redirect(url_for('paciente', id=agendamento.id))
+
+        nome_medico = request.form.get('nome_medico', '').strip()
+        procedimento = request.form.get('procedimento', '').strip()
+        data_cirurgia_raw = request.form.get('data_cirurgia', '').strip()
+        valor_raw = request.form.get('valor', '').strip()
+        data_pagamento_raw = request.form.get('data_pagamento', '').strip()
+        pagante = request.form.get('pagante', '').strip()
+        meio_pagamento = request.form.get('meio_pagamento', '').strip()
+        numero_procedimento = request.form.get('numero_procedimento', '').strip().upper()
+        arquivo_pdf = request.files.get('arquivo_comprovante')
+
+        if not all([numero_procedimento, nome_medico, procedimento, data_cirurgia_raw, valor_raw, pagante, meio_pagamento]):
+            flash('Preencha todos os campos obrigatórios do comprovante.')
+            return redirect(url_for('paciente', id=agendamento.id))
+
+        agendamento_pagamento = Agendamento.query.filter_by(numero_procedimento=numero_procedimento).first()
+        if not agendamento_pagamento:
+            flash('Número de procedimento não encontrado.')
+            return redirect(url_for('paciente', id=agendamento.id))
+
+        if (agendamento_pagamento.nome_paciente or '').strip().lower() != (agendamento.nome_paciente or '').strip().lower():
+            flash('Esse número de procedimento pertence a outro paciente.')
+            return redirect(url_for('paciente', id=agendamento.id))
+
+        try:
+            data_cirurgia = datetime.strptime(data_cirurgia_raw, '%Y-%m-%d').date()
+            data_pagamento = datetime.strptime(data_pagamento_raw, '%Y-%m-%d').date() if data_pagamento_raw else None
+            valor = parse_currency_value(valor_raw)
+            arquivo_comprovante = None
+            if arquivo_pdf and arquivo_pdf.filename:
+                arquivo_comprovante = save_comprovante_pdf(arquivo_pdf)
+        except ValueError:
+            flash('Revise os dados do comprovante. Valor, datas e arquivo PDF precisam estar válidos.')
+            return redirect(url_for('paciente', id=agendamento.id))
+
+        comprovante = Comprovante(
+            agendamento_id=agendamento_pagamento.id,
+            nome_medico=nome_medico,
+            procedimento=procedimento,
+            data_cirurgia=data_cirurgia,
+            valor=valor,
+            data_pagamento=data_pagamento,
+            pagante=pagante,
+            meio_pagamento=meio_pagamento,
+            arquivo_comprovante=arquivo_comprovante,
+            status='pago' if data_pagamento else 'pendente',
+        )
+
+        # Keep exactly one payment record per surgery (agendamento) to prevent duplicates.
+        comprovante_existente = Comprovante.query.filter_by(agendamento_id=agendamento_pagamento.id).first()
+        if comprovante_existente:
+            comprovante_existente.nome_medico = nome_medico
+            comprovante_existente.procedimento = procedimento
+            comprovante_existente.data_cirurgia = data_cirurgia
+            comprovante_existente.valor = valor
+            comprovante_existente.data_pagamento = data_pagamento
+            comprovante_existente.pagante = pagante
+            comprovante_existente.meio_pagamento = meio_pagamento
+            comprovante_existente.status = 'pago' if data_pagamento else 'pendente'
+            if arquivo_comprovante:
+                comprovante_existente.arquivo_comprovante = arquivo_comprovante
+        else:
+            db.session.add(comprovante)
+
+        duplicados = Comprovante.query.filter_by(agendamento_id=agendamento_pagamento.id).order_by(Comprovante.criado_em.desc()).all()
+        for item_duplicado in duplicados[1:]:
+            db.session.delete(item_duplicado)
+
+        db.session.commit()
+        flash('Pagamento da cirurgia vinculado com sucesso.')
+        return redirect(url_for('paciente', id=agendamento_pagamento.id))
+
+    comprovantes = Comprovante.query.filter_by(agendamento_id=agendamento.id).order_by(Comprovante.criado_em.desc()).all()
+    return render_template(
+        'paciente.html',
+        agendamento=agendamento,
+        comprovantes=comprovantes,
+        can_manage=can_manage,
+        can_access_pagamentos=can_access_pagamentos,
+    )
+
+@app.route('/api/agendamento-por-procedimento')
+def api_agendamento_por_procedimento():
+    if 'user_id' not in session:
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    user = User.query.get(session['user_id'])
+    if not user or not user_can_access_pagamentos(user):
+        return jsonify({'ok': False, 'error': 'forbidden'}), 403
+
+    numero = request.args.get('numero', '').strip().upper()
+    if not numero:
+        return jsonify({'ok': False, 'error': 'missing_numero'}), 400
+
+    agendamento = Agendamento.query.filter_by(numero_procedimento=numero).first()
+    if not agendamento:
+        return jsonify({'ok': False, 'error': 'not_found'}), 404
+
+    return jsonify({
+        'ok': True,
+        'agendamento_id': agendamento.id,
+        'numero_procedimento': agendamento.numero_procedimento,
+        'nome_paciente': agendamento.nome_paciente,
+        'nome_medico': agendamento.nome_medico,
+        'procedimento': agendamento.procedimento,
+        'data_cirurgia': agendamento.data.strftime('%Y-%m-%d'),
+    })
+
+@app.route('/pacientes')
+def pacientes():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if not user:
+        session.pop('user_id', None)
+        return redirect(url_for('login'))
+
+    search = request.args.get('q', '').strip().lower()
+    agendamentos = Agendamento.query.order_by(
+        Agendamento.nome_paciente.asc(),
+        Agendamento.data.desc(),
+        Agendamento.hora.desc(),
+    ).all()
+
+    pacientes_map = {}
+    for agendamento in agendamentos:
+        nome = (agendamento.nome_paciente or '').strip()
+        if not nome:
+            continue
+
+        if search:
+            id_match = search in str(agendamento.id)
+            protocolo_match = search in (agendamento.protocolo or '').lower()
+            nome_match = search in nome.lower()
+            if not (id_match or protocolo_match or nome_match):
+                continue
+
+        key = nome.lower()
+        if key not in pacientes_map:
+            pacientes_map[key] = {
+                'nome_paciente': nome,
+                'perfil_id': agendamento.id,
+                'qtd_cirurgias': 0,
+                'ultimo_agendamento': {
+                    'id': agendamento.id,
+                    'numero_procedimento': agendamento.numero_procedimento,
+                    'data': agendamento.data,
+                    'hora': agendamento.hora,
+                    'procedimento': agendamento.procedimento,
+                    'medico': agendamento.nome_medico,
+                    'protocolo': agendamento.protocolo,
+                },
+            }
+
+        paciente_item = pacientes_map[key]
+        paciente_item['qtd_cirurgias'] += 1
+
+    pacientes_data = sorted(pacientes_map.values(), key=lambda p: p['nome_paciente'].lower())
+
+    return render_template(
+        'pacientes.html',
+        pacientes=pacientes_data,
+        search=request.args.get('q', '').strip(),
+    )
 
 @app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
 def delete_user(user_id):
@@ -498,14 +954,25 @@ if __name__ == '__main__':
         with db.engine.connect() as conn:
             result = conn.execute(text("PRAGMA table_info('agendamento')")).fetchall()
             columns = [row[1] for row in result]
+            if 'numero_procedimento' not in columns:
+                conn.execute(text("ALTER TABLE agendamento ADD COLUMN numero_procedimento VARCHAR(40)"))
             if 'sala_cirurgica' not in columns:
                 conn.execute(text("ALTER TABLE agendamento ADD COLUMN sala_cirurgica VARCHAR(50)"))
             if 'quarto' not in columns:
                 conn.execute(text("ALTER TABLE agendamento ADD COLUMN quarto VARCHAR(50)"))
             if 'protocolo' not in columns:
                 conn.execute(text("ALTER TABLE agendamento ADD COLUMN protocolo VARCHAR(50)"))
+        with db.engine.connect() as conn:
+            result = conn.execute(text("PRAGMA table_info('comprovante')")).fetchall()
+            columns = [row[1] for row in result]
+            if 'arquivo_comprovante' not in columns:
+                conn.execute(text("ALTER TABLE comprovante ADD COLUMN arquivo_comprovante VARCHAR(255)"))
+
+        normalizar_numero_procedimento()
+
+        os.makedirs(os.path.join(app.static_folder, UPLOAD_COMPROVANTES_FOLDER), exist_ok=True)
         # Create default admin if not exists
-        admin = User.query.filter_by(nome='Gestão Esplanada').first()
+        admin = User.query.filter_by(nome='Gestão', cargo='admin').order_by(User.id).first()
         if not admin:
             admin = User(nome='Gestão', cargo='admin', senha='13092026', status='approved', grau=3)
             db.session.add(admin)

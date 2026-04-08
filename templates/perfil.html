@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="perfil-page">
+    <h2>Perfil do Usuário</h2>
+    {% if managed_by_admin %}
+        <a class="secondary-btn" href="{{ url_for('admin') }}">Voltar ao Admin</a>
+    {% endif %}
+
+    <section class="perfil-card">
+        <h3>Dados do Perfil</h3>
+        <form method="post" class="perfil-form">
+            <input type="hidden" name="action" value="dados">
+
+            <label for="nome">Nome</label>
+            <input type="text" id="nome" name="nome" value="{{ user.nome }}" required>
+
+            <label for="cargo">Cargo</label>
+            <input type="text" id="cargo" name="cargo" value="{{ user.cargo }}" required>
+
+            <button type="submit">Salvar Dados</button>
+        </form>
+    </section>
+
+    <section class="perfil-card">
+        <h3>Senha</h3>
+        <form class="perfil-form">
+            <label for="senha_atual_visual">Visualizar Senha Atual</label>
+            <input type="password" id="senha_atual_visual" value="{{ user.senha }}" readonly>
+            <button type="button" id="toggle-senha" class="secondary-btn">Visualizar</button>
+        </form>
+
+        <form method="post" class="perfil-form">
+            <input type="hidden" name="action" value="senha">
+
+            {% if not managed_by_admin %}
+                <label for="senha_atual">Senha Atual</label>
+                <input type="password" id="senha_atual" name="senha_atual" required>
+            {% endif %}
+
+            <label for="nova_senha">Nova Senha</label>
+            <input type="password" id="nova_senha" name="nova_senha" required>
+
+            <label for="confirmar_senha">Confirmar Nova Senha</label>
+            <input type="password" id="confirmar_senha" name="confirmar_senha" required>
+
+            <button type="submit">Alterar Senha</button>
+        </form>
+    </section>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <ul class="flash-messages">
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const inputSenha = document.getElementById('senha_atual_visual');
+        const toggle = document.getElementById('toggle-senha');
+
+        toggle.addEventListener('click', function () {
+            const mostrando = inputSenha.type === 'text';
+            inputSenha.type = mostrando ? 'password' : 'text';
+            toggle.textContent = mostrando ? 'Visualizar' : 'Ocultar';
+        });
+    });
+</script>
+{% endblock %}

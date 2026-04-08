@@ -56,9 +56,9 @@ celular.
 ## 🔐 Autenticação
 
 -   Não exigir login para acessar
--   Login obrigatório para criar, editar ou excluir
+-   Entrar obrigatório para criar, editar ou excluir
 
-### Login:
+### Entrar:
 
 -   Nome
 -   Senha numérica

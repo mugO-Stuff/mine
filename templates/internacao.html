@@ -3,17 +3,18 @@
 {% block content %}
 <div class="page-header">
     <h2>Internação - {{ agendamento.nome_paciente }}</h2>
-    <a class="secondary-btn" href="{{ url_for('index') }}">Voltar para Agendamentos</a>
+    <div class="patient-header-actions">
+        <a class="secondary-btn" href="{{ url_for('index') }}">Voltar para Agendamentos</a>
+    </div>
 </div>
 
 <div class="admin-form" style="max-width: 600px; margin: 0 auto;">
+    <p><strong>ID do Agendamento:</strong> #{{ agendamento.id }}</p>
     <p><strong>Procedimento:</strong> {{ agendamento.procedimento }} | <strong>Data:</strong> {{ agendamento.data.strftime('%d/%m/%Y') }} às {{ agendamento.hora.strftime('%H:%M') }}</p>
     <p><strong>Médico:</strong> {{ agendamento.nome_medico }} | <strong>CRM:</strong> {{ agendamento.crm_medico }}</p>
+    <p><strong>Protocolo:</strong> {{ agendamento.protocolo or '-' }}</p>
 
     <form method="post">
-        <label for="protocolo">Protocolo:</label>
-        <input type="text" id="protocolo" name="protocolo" value="{{ agendamento.protocolo or '' }}" required>
-
         <label for="sala_cirurgica">Sala Cirúrgica:</label>
         <input type="text" id="sala_cirurgica" name="sala_cirurgica" value="{{ agendamento.sala_cirurgica or '' }}" required>
 

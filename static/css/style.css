@@ -68,8 +68,19 @@ main {
 /* Espaçamento lateral simétrico para admin-grid e user-table */
 /* Ajuste assimétrico: menos espaço à esquerda, mais à direita */
 .admin-grid, .user-table {
-    padding-left: 0.5vw;
-    padding-right: 3.5vw;
+    padding-left: 0;
+    padding-right: 0;
+    box-sizing: border-box;
+}
+
+.user-table-form {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.user-table {
+    width: 100%;
+    border-collapse: collapse;
     box-sizing: border-box;
 }
 @media (max-width: 560px) {
@@ -86,41 +97,49 @@ main {
         padding-right: 2vw;
         box-sizing: border-box;
     }
+    .admin-grid section {
+        overflow: hidden;
+        box-sizing: border-box;
+        max-width: 100%;
+        border-radius: 16px;
+    }
 }
 @media (max-width: 560px) {
     .user-table td:last-child {
-        display: block;
-        min-width: 0;
-        max-width: 100vw;
-        box-sizing: border-box;
-        padding-left: 0.2rem !important;
-        padding-right: 0.2rem !important;
+        padding: 0.4rem !important;
     }
-    .user-table td:last-child form {
-        display: block;
-        margin-bottom: 0.3rem;
-    }
-    .user-table td:last-child form:last-child {
-        margin-bottom: 0;
-    }
-    .grade-form {
+    .action-cell {
         display: flex;
-        flex-direction: row;
-        align-items: center;
         gap: 0.3rem;
+        align-items: center;
+        flex-wrap: nowrap;
     }
-    .grade-form select {
-        width: 60px !important;
-        min-width: 0 !important;
-        max-width: 80px !important;
-        font-size: 1rem;
-        margin-right: 0.2rem;
+    .action-cell .action-link,
+    .action-cell .delete-btn {
+        padding: 0.3rem 0.5rem;
+        font-size: 0.75rem;
+        white-space: nowrap;
     }
-    .grade-form button, .action-link.reject {
-        width: 100%;
-        box-sizing: border-box;
-        font-size: 0.98rem;
-        margin: 0.1rem 0;
+    .user-level-select {
+        width: 44px;
+        min-width: 44px;
+        padding: 0.3rem 0.1rem;
+        font-size: 0.8rem;
+    }
+    .save-all-btn {
+        position: static;
+        transform: none;
+        padding: 0.35rem 0.6rem;
+        font-size: 0.75rem;
+        margin: 0;
+        white-space: nowrap;
+    }
+    .user-table {
+        font-size: 0.8rem;
+    }
+    .user-table th,
+    .user-table td {
+        padding: 0.4rem 0.3rem;
     }
 }
 @media (max-width: 560px) {
@@ -149,7 +168,7 @@ main {
     form select,
     form textarea {
         max-width: 90vw;
-        width: 90vw;
+        width: 85vw;
         min-width: 0;
         margin: 0 auto 0.7rem auto;
         display: block;
@@ -229,11 +248,43 @@ header h1 {
     font-size: 1.4rem;
 }
 
+.header-nav {
+    margin-top: 0.5rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
 header a {
     color: white;
     text-decoration: none;
-    float: right;
-    margin-left: 1rem;
+    margin-left: 0;
+}
+
+.perfil-page {
+    max-width: 760px;
+    margin: 0 auto;
+}
+
+.perfil-card {
+    background: #daf3ef;
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.perfil-card h3 {
+    margin-top: 0;
+}
+
+.perfil-form {
+    max-width: 100%;
+    margin: 0;
+}
+
+.perfil-form .secondary-btn {
+    margin-top: 0.8rem;
 }
 
 main {
@@ -393,7 +444,21 @@ main {
 .appointment-actions {
     margin-top: 0.4rem;
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
+}
+
+.appointment-actions a {
+    color: white;
+    background-color: #004d40;
+    padding: 0.45rem 0.7rem;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.appointment-actions a:hover {
+    background-color: #00695c;
 }
 
 .modal {
@@ -457,9 +522,24 @@ main {
     margin: 0.15rem 0;
 }
 
+#modal-title {
+    width: 340px;
+}
+
+@media (max-width: 560px) {
+    .modal-content {
+        max-width: 380px;
+        width: 100%;
+        max-height: 20vh;
+        overflow-y: auto;
+        padding: 0.4rem;
+    }
+}
+
 .internalacao-btn {
     display: inline-block;
     margin-top: 0.8rem;
+    margin-left: 0.3rem;
     color: white;
     background-color: #2e7d32;
     padding: 0.45rem 0.7rem;
@@ -530,7 +610,8 @@ main {
     height: 3px !important;
 }
 
-.appointments-table a {
+.appointments-table .actions-cell > a,
+.appointments-table .mobile-actions-panel a {
     color: white;
     background-color: #004d40;
     padding: 0.3rem 0.6rem;
@@ -540,13 +621,314 @@ main {
     font-size: 0.85rem;
 }
 
-.appointments-table a:hover {
+.appointments-table .actions-cell > a:hover,
+.appointments-table .mobile-actions-panel a:hover {
     background-color: #00695c;
+}
+
+.appointments-table a.patient-link {
+    background: transparent !important;
+    color: #004d40 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.appointments-table a.patient-link:hover {
+    text-decoration: underline;
+}
+
+.date-day-only,
+.patient-name-short {
+    display: none;
+}
+
+.mobile-toggle,
+.mobile-actions-panel,
+.mobile-info-panel {
+    display: none;
+}
+
+.mobile-info-panel p {
+    margin: 0.2rem 0;
 }
 
 .no-data {
     text-align: center;
     color: #999;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.patient-header-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.patient-subtitle {
+    margin: 0.35rem 0 0;
+    color: #00695c;
+    font-weight: 600;
+}
+
+.patient-grid {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.1fr);
+    gap: 1.5rem;
+}
+
+.patient-card {
+    background-color: #daf3ef;
+    border-radius: 12px;
+    padding: 1rem;
+}
+
+.patient-card h3 {
+    margin-top: 0;
+}
+
+.patient-details-grid,
+.comprovante-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem;
+}
+
+.detail-label {
+    display: block;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #00796b;
+    margin-bottom: 0.2rem;
+}
+
+.patient-observation {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #b7ddd7;
+}
+
+.patient-observation p {
+    margin: 0.35rem 0 0;
+}
+
+.section-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.summary-pill {
+    display: inline-block;
+    background-color: #004d40;
+    color: white;
+    border-radius: 999px;
+    padding: 0.25rem 0.7rem;
+    font-size: 0.85rem;
+}
+
+.patient-form {
+    max-width: 100%;
+    margin: 0 0 1.25rem;
+}
+
+.patient-form select,
+.patient-form input {
+    box-sizing: border-box;
+}
+
+.procedure-lookup-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.procedure-lookup-row input {
+    margin: 0;
+    flex: 1;
+}
+
+.procedure-lookup-row button {
+    margin: 0;
+    white-space: nowrap;
+}
+
+.comprovante-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.comprovante-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.comprovante-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.status-pago {
+    background-color: #c8e6c9;
+    color: #1b5e20;
+}
+
+.status-pendente {
+    background-color: #ffe0b2;
+    color: #e65100;
+}
+
+.empty-state {
+    margin: 0;
+    color: #004d40;
+}
+
+.patient-link {
+    color: #004d40;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.patient-link:hover {
+    color: #00695c;
+    text-decoration: underline;
+}
+
+.patients-page {
+    display: grid;
+    gap: 1rem;
+}
+
+.patients-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.patients-header h2 {
+    margin: 0;
+}
+
+.patients-search-form {
+    max-width: 100%;
+    margin: 0;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.patients-search-form input {
+    margin: 0;
+    min-width: 280px;
+    max-width: 420px;
+}
+
+.patients-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.patient-history-card {
+    background-color: #daf3ef;
+    border-radius: 12px;
+    padding: 1rem;
+}
+
+.patient-history-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.patient-history-header h3 {
+    margin: 0;
+}
+
+.patient-history-header p {
+    margin: 0.35rem 0 0;
+}
+
+.patient-history-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.history-block {
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 0.85rem;
+}
+
+.history-block h4 {
+    margin: 0 0 0.8rem;
+}
+
+.history-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.6rem;
+}
+
+.history-list li {
+    background-color: #f7fbf9;
+    border-radius: 8px;
+    padding: 0.6rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.7rem;
+}
+
+.history-list p {
+    margin: 0.2rem 0 0;
+}
+
+.payment-summary {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}
+
+@media (max-width: 900px) {
+    .patient-history-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 form {
@@ -603,6 +985,53 @@ button:hover,
     background-color: #00695c;
 }
 
+.user-table-form {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.user-table thead th:last-child {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.6rem 0.8rem;
+}
+
+.save-all-btn {
+    background-color: #004d40;
+    color: white;
+    padding: 0.4rem 0.9rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.save-all-btn:hover {
+    background-color: #00695c;
+}
+
+.action-cell {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+}
+
+.user-level-select {
+    padding: 0.4rem;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    width: 50px;
+    min-width: 50px;
+    flex-shrink: 0;
+}
+
 .admin-grid {
     display: grid;
     gap: 1.5rem;
@@ -612,7 +1041,13 @@ button:hover,
     display: none;
     background-color: #daf3ef;
     padding: 1rem;
-    border-radius: 8px;
+    border-radius: 16px;
+}
+
+#gerenciamento {
+    padding: 0;
+    border-radius: 10px;
+    overflow: hidden;
 }
 
 .admin-grid section:target {
@@ -694,6 +1129,10 @@ button:hover,
     display: grid;
     grid-template-columns: repeat(3, minmax(220px, 1fr));
     gap: 1.5rem;
+}
+
+.dashboard-scroll {
+    width: 100%;
 }
 
 .dashboard-card {
@@ -778,6 +1217,10 @@ button:hover,
 .admin-form {
     display: grid;
     gap: 1rem;
+}
+
+#medicos label[for="nome_medico"] {
+    width: 200px;
 }
 
     .admin-form button {
@@ -890,6 +1333,10 @@ button:hover {
     color: #004d40;
 }
 
+.dashboard-nav {
+    display: none;
+}
+
 @media (max-width: 1024px) {
     .day {
         width: calc(33.33% - 1rem);
@@ -898,6 +1345,230 @@ button:hover {
     .appointments-table td {
         padding: 0.6rem;
         font-size: 0.85rem;
+    }
+
+    .patient-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 560px) {
+    .header-nav {
+        justify-content: center;
+    }
+
+    .appointments-table .col-hora,
+    .appointments-table .col-crm,
+    .appointments-table .col-procedimento,
+    .appointments-table .col-cid,
+    .appointments-table .col-observacao {
+        display: none;
+    }
+
+    .appointments-table .date-full,
+    .appointments-table .patient-name-full {
+        display: none;
+    }
+
+    .appointments-table .date-day-only,
+    .appointments-table .patient-name-short {
+        display: inline;
+    }
+
+    .appointments-table .date-day-only {
+        font-weight: 700;
+        font-size: 1rem;
+    }
+
+    .appointments-table .actions-cell > a {
+        display: none;
+    }
+
+    .appointments-table .mobile-toggle {
+        display: inline-block;
+        margin-top: 0.35rem;
+        margin-right: 0.35rem;
+        background-color: #00796b;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 0.35rem 0.55rem;
+        font-size: 0.8rem;
+        cursor: pointer;
+    }
+
+    .appointments-table .mobile-toggle:hover {
+        background-color: #00695c;
+    }
+
+    .appointments-table .mobile-actions-panel.visible,
+    .appointments-table .mobile-info-panel.visible {
+        display: block;
+        margin-top: 0.45rem;
+        padding-top: 0.45rem;
+        border-top: 1px solid #cfe5df;
+    }
+
+    .appointments-table .mobile-actions-panel a {
+        display: inline-block;
+        margin-bottom: 0.35rem;
+    }
+
+    .appointments-table .mobile-info-panel {
+        font-size: 0.82rem;
+        color: #004d40;
+    }
+
+    .calendar {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 0.45rem;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box;
+    }
+
+    .calendar .day {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0.45rem !important;
+        box-sizing: border-box;
+        aspect-ratio: 1 / 1;
+        min-height: 0 !important;
+        max-height: none !important;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .calendar .day h3 {
+        margin: 0 0 0.25rem 0;
+        font-size: 0.95rem;
+        line-height: 1;
+        flex: 0 0 auto;
+    }
+
+    .calendar .appointments-list {
+        flex: 1 1 auto;
+        min-height: 0;
+        max-height: none;
+        overflow-y: auto;
+        margin-top: 0.2rem;
+        padding-right: 0.15rem;
+    }
+
+    .calendar .appointment {
+        margin: 0.25rem 0;
+        padding: 0.35rem;
+    }
+
+    .calendar .appointment p,
+    .calendar .no-appointments {
+        margin: 0;
+        font-size: 0.78rem;
+        line-height: 1.2;
+    }
+
+    .page-header,
+    .section-heading,
+    .comprovante-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .patient-header-actions {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .patient-header-actions .secondary-btn {
+        width: auto;
+        min-width: 0;
+        padding: 0.55rem 0.85rem;
+        margin: 0;
+        font-size: 0.92rem;
+        align-self: flex-start;
+    }
+
+    .patient-details-grid,
+    .comprovante-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .patient-card {
+        padding: 0.85rem;
+    }
+
+    .dashboard-scroll {
+        display: block;
+        overflow: hidden;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .dashboard-grid {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 0;
+        width: 100%;
+        transition: transform 0.35s ease;
+        will-change: transform;
+    }
+
+    .dashboard-card {
+        flex: 0 0 100%;
+        min-width: 0;
+        max-width: 100%;
+        max-height: 460px;
+        cursor: pointer;
+        box-sizing: border-box;
+    }
+
+    .dashboard-nav {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        margin-top: 0.6rem;
+    }
+
+    .dash-arrow {
+        background: none;
+        border: 1px solid #aaa;
+        border-radius: 50%;
+        width: 2rem;
+        height: 2rem;
+        font-size: 1rem;
+        cursor: pointer;
+        color: #444;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .dash-dots {
+        display: flex;
+        gap: 0.4rem;
+        align-items: center;
+    }
+
+    .dash-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #ccc;
+        display: inline-block;
+        transition: background 0.2s;
+    }
+
+    .dash-dot.active {
+        background: #555;
     }
 }
 

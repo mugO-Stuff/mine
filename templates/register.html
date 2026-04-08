@@ -11,7 +11,7 @@
     <input type="password" id="senha" name="senha" required>
     <button type="submit">Cadastrar</button>
 </form>
-<p>Já tem conta? <a href="{{ url_for('login') }}">Login</a></p>
+<p>Já tem conta? <a href="{{ url_for('login') }}">Entrar</a></p>
 {% with messages = get_flashed_messages() %}
     {% if messages %}
         <ul>

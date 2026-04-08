@@ -36,15 +36,15 @@
 
     <section id="gerenciamento">
         <h3>Gerenciamento de Usuários</h3>
-        <p>Aqui estão todos os usuários cadastrados e seus graus de acesso.</p>
+        <p>Aqui estão todos os usuários cadastrados e seus níveis de acesso.</p>
         {% if all_users %}
-        <div style="overflow-x:auto; padding-left:8px; padding-right:16px;">
-            <table class="user-table" style="min-width:320px; width:100%; box-sizing:border-box;">
-                <thead>
+        <form method="post" action="{{ url_for('set_user_levels_bulk') }}" class="user-table-form">
+        <table class="user-table">
+            <thead>
                     <tr>
                         <th>Nome</th>
                         <th>Cargo</th>
-                        <th>Ação</th>
+                        <th>Nível <button type="submit" class="save-all-btn">Salvar</button></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -53,27 +53,41 @@
                             <td>{{ u.nome }}</td>
                             <td>{{ u.cargo }}</td>
                             <td>
-                                <form method="post" action="{{ url_for('set_user_grade', user_id=u.id) }}" class="grade-form" style="display:inline-block; margin-right:0.5rem;">
-                                    <select id="grau-{{ u.id }}" name="grau">
-                                        <option value="1" {% if u.grau == 1 %}selected{% endif %}>1</option>
-                                        <option value="2" {% if u.grau == 2 %}selected{% endif %}>2</option>
-                                        <option value="3" {% if u.grau == 3 %}selected{% endif %}>3</option>
+                                <div class="action-cell">
+                                    <a class="action-link" href="{{ url_for('perfil_usuario', user_id=u.id) }}">Perfil</a>
+                                    <select name="nivel-{{ u.id }}" class="user-level-select" data-user-id="{{ u.id }}">
+                                        <option value="1" {% if u.nivel == 1 %}selected{% endif %}>1</option>
+                                        <option value="2" {% if u.nivel == 2 %}selected{% endif %}>2</option>
+                                        <option value="3" {% if u.nivel == 3 %}selected{% endif %}>3</option>
                                     </select>
-                                    <button type="submit">Salvar</button>
-                                </form>
-                                <form method="post" action="{{ url_for('delete_user', user_id=u.id) }}" style="display:inline-block;">
-                                    <button type="submit" class="action-link reject" onclick="return confirm('Tem certeza que deseja excluir este usuário?');">Excluir</button>
-                                </form>
+                                    <button type="button" class="action-link reject delete-btn" data-delete-url="{{ url_for('delete_user', user_id=u.id) }}">Excluir</button>
+                                </div>
                             </td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
+        </form>
         {% else %}
             <p>Nenhum usuário cadastrado.</p>
         {% endif %}
     </section>
+
+    <script>
+    document.querySelectorAll('.delete-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('Tem certeza que deseja excluir este usuário?')) {
+                var deleteUrl = this.getAttribute('data-delete-url');
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = deleteUrl;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    });
+    </script>
 
     <section id="medicos">
         <h3>Adicionar Médico</h3>
@@ -121,8 +135,9 @@
 
     <section id="contagem">
         <h3>Visão Mensal</h3>
-        <div class="dashboard-grid">
-                    <div class="dashboard-card">
+        <div class="dashboard-scroll">
+            <div class="dashboard-grid">
+                <div class="dashboard-card">
                 <h4>Resumo por mês</h4>
                 <div class="dashboard-content">
                     <ul class="dashboard-list">
@@ -176,6 +191,12 @@
                 </div>
             </div>
         </div>
+        </div>
+        <div class="dashboard-nav" id="dashboardNav">
+            <button class="dash-arrow" id="dashPrev">&#8592;</button>
+            <span class="dash-dots" id="dashDots"></span>
+            <button class="dash-arrow" id="dashNext">&#8594;</button>
+        </div>
     </section>
 </div>
 {% with messages = get_flashed_messages() %}
@@ -187,4 +208,40 @@
         </ul>
     {% endif %}
 {% endwith %}
+
+<script>
+(function() {
+    var grid = document.querySelector('.dashboard-grid');
+    var cards = Array.from(document.querySelectorAll('.dashboard-card'));
+    var prevBtn = document.getElementById('dashPrev');
+    var nextBtn = document.getElementById('dashNext');
+    var dotsEl = document.getElementById('dashDots');
+    var current = 0;
+
+    function isMobile() { return window.innerWidth <= 560; }
+
+    function goTo(index) {
+        if (!isMobile()) return;
+        current = Math.max(0, Math.min(index, cards.length - 1));
+        grid.style.transform = 'translateX(-' + (current * 100) + '%)';
+        updateDots();
+    }
+
+    function updateDots() {
+        if (!dotsEl) return;
+        dotsEl.innerHTML = cards.map(function(_, i) {
+            return '<span class="dash-dot' + (i === current ? ' active' : '') + '"></span>';
+        }).join('');
+    }
+
+    if (prevBtn) prevBtn.addEventListener('click', function() { goTo(current - 1); });
+    if (nextBtn) nextBtn.addEventListener('click', function() { goTo(current + 1); });
+
+    cards.forEach(function(card, i) {
+        card.addEventListener('click', function() { goTo(i); });
+    });
+
+    updateDots();
+})();
+</script>
 {% endblock %}

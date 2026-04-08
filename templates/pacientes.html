@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="patients-page">
+    <div class="patients-header">
+        <h2>Pacientes</h2>
+        <form method="get" class="patients-search-form">
+            <input type="text" name="q" value="{{ search }}" placeholder="Buscar paciente por nome, protocolo ou ID">
+            <button type="submit">Buscar</button>
+            {% if search %}
+                <a class="clear-filter" href="{{ url_for('pacientes') }}">Limpar</a>
+            {% endif %}
+        </form>
+    </div>
+
+    {% if pacientes %}
+        <div class="patients-list">
+            {% for paciente in pacientes %}
+                <article class="patient-history-card">
+                    <div class="patient-history-header">
+                        <div>
+                            <h3>{{ paciente.nome_paciente }}</h3>
+                            <p>{{ paciente.qtd_cirurgias }} cirurgia(s)</p>
+                        </div>
+                        {% if paciente.perfil_id %}
+                            <a class="secondary-btn" href="{{ url_for('paciente', id=paciente.perfil_id) }}">Abrir Perfil</a>
+                        {% endif %}
+                    </div>
+
+                    <section class="history-block">
+                        <h4>Último Agendamento</h4>
+                        {% if paciente.ultimo_agendamento %}
+                            <div>
+                                <p><strong>ID:</strong> #{{ paciente.ultimo_agendamento.id }}</p>
+                                <p><strong>Nº Procedimento:</strong> {{ paciente.ultimo_agendamento.numero_procedimento or '-' }}</p>
+                                <p><strong>Data:</strong> {{ paciente.ultimo_agendamento.data.strftime('%d/%m/%Y') }} às {{ paciente.ultimo_agendamento.hora.strftime('%H:%M') }}</p>
+                                <p><strong>Procedimento:</strong> {{ paciente.ultimo_agendamento.procedimento }}</p>
+                                <p><strong>Médico:</strong> {{ paciente.ultimo_agendamento.medico }}</p>
+                                <p><strong>Protocolo:</strong> {{ paciente.ultimo_agendamento.protocolo or '-' }}</p>
+                            </div>
+                        {% else %}
+                            <p class="empty-state">Sem agendamento recente.</p>
+                        {% endif %}
+                    </section>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="empty-state">Nenhum paciente encontrado.</p>
+    {% endif %}
+</div>
+{% endblock %}
