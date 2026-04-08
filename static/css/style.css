@@ -1,3 +1,214 @@
+/* Garante que o footer fique sempre no final da página, centralizado */
+html, body {
+    height: 100%;
+    min-height: 100vh;
+}
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+main {
+    flex: 1 0 auto;
+}
+.footer-fixed {
+    width: 100%;
+    text-align: center;
+    padding: 1rem 0 0.5rem 0;
+    font-size: 0.98rem;
+    color: #00695c;
+    background: #e0f2f1;
+    flex-shrink: 0;
+    margin-top: auto;
+    position: relative;
+    left: 0;
+    bottom: 0;
+}
+@media (max-width: 560px) {
+    .calendar {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box;
+    }
+    .calendar .day {
+        width: 32vw !important;
+        min-width: 90px !important;
+        min-height: 90px !important;
+        max-width: 33vw !important;
+        margin: 0.5vw !important;
+        padding: 0.5rem !important;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+    }
+    .calendar .appointments-list {
+        max-height: 60vw;
+        overflow-y: auto;
+        width: 100%;
+    }
+    .calendar .day h3 {
+        text-align: center;
+        width: 100%;
+    }
+}
+@media (max-width: 560px) {
+    .user-table td:last-child {
+        margin-left: 8px !important;
+        padding-left: 8px !important;
+        padding-right: 0.2rem !important;
+        box-sizing: border-box;
+    }
+}
+/* Espaçamento lateral simétrico para admin-grid e user-table */
+/* Ajuste assimétrico: menos espaço à esquerda, mais à direita */
+.admin-grid, .user-table {
+    padding-left: 0.5vw;
+    padding-right: 3.5vw;
+    box-sizing: border-box;
+}
+@media (max-width: 560px) {
+    .user-table {
+        margin-left: auto;
+        margin-right: auto;
+        width: 98vw;
+        max-width: 98vw;
+        border-radius: 12px;
+        box-sizing: border-box;
+    }
+    .admin-grid {
+        padding-left: 2vw;
+        padding-right: 2vw;
+        box-sizing: border-box;
+    }
+}
+@media (max-width: 560px) {
+    .user-table td:last-child {
+        display: block;
+        min-width: 0;
+        max-width: 100vw;
+        box-sizing: border-box;
+        padding-left: 0.2rem !important;
+        padding-right: 0.2rem !important;
+    }
+    .user-table td:last-child form {
+        display: block;
+        margin-bottom: 0.3rem;
+    }
+    .user-table td:last-child form:last-child {
+        margin-bottom: 0;
+    }
+    .grade-form {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.3rem;
+    }
+    .grade-form select {
+        width: 60px !important;
+        min-width: 0 !important;
+        max-width: 80px !important;
+        font-size: 1rem;
+        margin-right: 0.2rem;
+    }
+    .grade-form button, .action-link.reject {
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 0.98rem;
+        margin: 0.1rem 0;
+    }
+}
+@media (max-width: 560px) {
+    .user-table td:nth-child(2) {
+        padding-right: 0.2rem !important;
+    }
+    .user-table td:last-child {
+        padding-left: 0.2rem !important;
+    }
+    .grade-form select {
+        margin-left: 0 !important;
+    }
+}
+@media (max-width: 560px) {
+    .grade-form select {
+        width: 60px !important;
+        min-width: 0 !important;
+        max-width: 80px !important;
+        display: inline-block;
+        font-size: 1rem;
+        margin-right: 0.3rem;
+    }
+}
+@media (max-width: 560px) {
+    form input,
+    form select,
+    form textarea {
+        max-width: 90vw;
+        width: 90vw;
+        min-width: 0;
+        margin: 0 auto 0.7rem auto;
+        display: block;
+        font-size: 1rem;
+    }
+    form label {
+        font-size: 0.98rem;
+    }
+}
+/* Esconde a navegação mobile no desktop e vice-versa */
+.month-nav-mobile { display: none; }
+
+@media (max-width: 560px) {
+    .month-nav-desktop { display: none !important; }
+    .month-nav-mobile {
+        display: flex !important;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.2rem;
+        margin-bottom: 1rem;
+        width: 100vw;
+        max-width: 100vw;
+        box-sizing: border-box;
+    }
+    .month-nav-btn {
+        flex: 0 0 auto;
+        width: 32%;
+        display: flex;
+        justify-content: center;
+    }
+    .month-title-mobile {
+        flex: 1 1 auto;
+        text-align: center;
+        font-size: 1rem;
+        padding: 0 0.2rem;
+        font-weight: 700;
+    }
+}
+@media (max-width: 560px) {
+    body, html {
+        width: 100vw;
+        overflow-x: hidden;
+    }
+    main, .container, #main, .content {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box;
+    }
+    .calendar {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box;
+    }
+}
 body {
     font-family: Arial, sans-serif;
     background-color: #e0f2f1;
@@ -703,8 +914,41 @@ button:hover {
 }
 
 @media (max-width: 560px) {
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box;
+    }
+    .calendar {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem;
+        width: 100%;
+        max-width: 100vw;
+        margin: 0 auto;
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
     .day {
         width: 100%;
+        min-height: 90px;
+        max-height: 180px;
+        margin: 0;
+        padding: 0.5rem;
+        font-size: 1rem;
+        box-sizing: border-box;
+    }
+    .day h3 {
+        font-size: 1.1rem;
+    }
+    .appointments-list {
+        max-height: 70px;
+        font-size: 0.95rem;
+    }
+    .appointment {
+        padding: 0.3rem;
+        margin: 0.15rem 0;
+        font-size: 0.95rem;
     }
     .appointments-table {
         font-size: 0.8rem;
@@ -712,5 +956,8 @@ button:hover {
     .appointments-table th,
     .appointments-table td {
         padding: 0.4rem;
+    }
+    body, html {
+        overflow-x: hidden;
     }
 }

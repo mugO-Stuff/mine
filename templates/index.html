@@ -1,10 +1,23 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="month-nav">
+
+<!-- Navegação padrão (desktop/tablet) -->
+<div class="month-nav month-nav-desktop">
     <a class="month-link" href="{{ url_for('index', year=prev_year, month=prev_month, view=view_mode) }}">← Mês Anterior</a>
-    <span class="month-title">Mês de referência: {{ "%02d" % month }}/{{ year }}</span>
+    <span class="month-title">Mês de Referência: {{ "%02d" % month }}/{{ year }}</span>
     <a class="month-link" href="{{ url_for('index', year=next_year, month=next_month, view=view_mode) }}">Próximo Mês →</a>
+</div>
+
+<!-- Navegação mobile: botões em divs separadas -->
+<div class="month-nav-mobile">
+    <div class="month-nav-btn">
+        <a class="month-link" href="{{ url_for('index', year=prev_year, month=prev_month, view=view_mode) }}">← Mês Anterior</a>
+    </div>
+    <div class="month-title-mobile">Mês de Referência: {{ "%02d" % month }}/{{ year }}</div>
+    <div class="month-nav-btn">
+        <a class="month-link" href="{{ url_for('index', year=next_year, month=next_month, view=view_mode) }}">Próximo Mês →</a>
+    </div>
 </div>
 
 <div class="view-options">

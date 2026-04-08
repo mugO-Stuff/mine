@@ -464,6 +464,23 @@ def internacao(id):
         return redirect(url_for('index'))
     return render_template('internacao.html', agendamento=agendamento)
 
+@app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
+def delete_user(user_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    user = User.query.get(session['user_id'])
+    if not user or (user.cargo != 'admin' and user.grau != 3):
+        flash('Acesso negado')
+        return redirect(url_for('admin'))
+    if user.id == user_id:
+        flash('Você não pode excluir a si mesmo.')
+        return redirect(url_for('admin'))
+    target_user = User.query.get_or_404(user_id)
+    db.session.delete(target_user)
+    db.session.commit()
+    flash(f'Usuário {target_user.nome} excluído com sucesso.')
+    return redirect(url_for('admin'))
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
@@ -493,4 +510,4 @@ if __name__ == '__main__':
             admin = User(nome='Gestão', cargo='admin', senha='13092026', status='approved', grau=3)
             db.session.add(admin)
             db.session.commit()
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)

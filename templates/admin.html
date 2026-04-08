@@ -4,7 +4,6 @@
 <div class="admin-header-row">
     <div>
         <h2>Admin - Gestão Esplanada</h2>
-        <p class="admin-note">Usuários com grau 3 têm os mesmos privilégios do admin para gerenciar médicos, procedimentos e aprovações.</p>
     </div>
     <a class="secondary-btn" href="{{ url_for('index') }}">Agendamentos</a>
 </div>
@@ -39,13 +38,12 @@
         <h3>Gerenciamento de Usuários</h3>
         <p>Aqui estão todos os usuários cadastrados e seus graus de acesso.</p>
         {% if all_users %}
-            <table class="user-table">
+        <div style="overflow-x:auto; padding-left:8px; padding-right:16px;">
+            <table class="user-table" style="min-width:320px; width:100%; box-sizing:border-box;">
                 <thead>
                     <tr>
                         <th>Nome</th>
                         <th>Cargo</th>
-                        <th>Status</th>
-                        <th>Grau</th>
                         <th>Ação</th>
                     </tr>
                 </thead>
@@ -54,10 +52,8 @@
                         <tr>
                             <td>{{ u.nome }}</td>
                             <td>{{ u.cargo }}</td>
-                            <td>{{ u.status }}</td>
-                            <td>{{ u.grau }}</td>
                             <td>
-                                <form method="post" action="{{ url_for('set_user_grade', user_id=u.id) }}" class="grade-form">
+                                <form method="post" action="{{ url_for('set_user_grade', user_id=u.id) }}" class="grade-form" style="display:inline-block; margin-right:0.5rem;">
                                     <select id="grau-{{ u.id }}" name="grau">
                                         <option value="1" {% if u.grau == 1 %}selected{% endif %}>1</option>
                                         <option value="2" {% if u.grau == 2 %}selected{% endif %}>2</option>
@@ -65,11 +61,15 @@
                                     </select>
                                     <button type="submit">Salvar</button>
                                 </form>
+                                <form method="post" action="{{ url_for('delete_user', user_id=u.id) }}" style="display:inline-block;">
+                                    <button type="submit" class="action-link reject" onclick="return confirm('Tem certeza que deseja excluir este usuário?');">Excluir</button>
+                                </form>
                             </td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
         {% else %}
             <p>Nenhum usuário cadastrado.</p>
         {% endif %}
