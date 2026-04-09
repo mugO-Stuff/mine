@@ -324,7 +324,7 @@ def index():
         for day in week:
             if day != 0:
                 d = date(year, month, day)
-                if d.weekday() < 5:
+                if d.weekday() < 6:
                     all_dates.append(d)
                     appointments[d] = Agendamento.query.filter_by(data=d).all()
                     if d in holidays_map:
