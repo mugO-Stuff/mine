@@ -68,7 +68,7 @@
                 <div class="appointments-list">
                     {% if appts %}
                         {% for appt in appts %}
-                            <div class="appointment {% if reminder_status.get(appt.id) %}{{ reminder_status.get(appt.id) }}{% endif %}" data-hora="{{ appt.hora.strftime('%H:%M') }}" data-paciente="{{ appt.nome_paciente }}" data-medico="{{ appt.nome_medico }}" data-crm="{{ appt.crm_medico }}" data-procedimento="{{ appt.procedimento }}" data-cid="{{ appt.cid_procedimento }}" data-observacao="{{ appt.observacao or '-' }}" data-protocolo="{{ appt.protocolo or '' }}" data-concluido="{{ '1' if appt.esta_concluido else '0' }}"{% if 'user_id' in session %} data-numero-procedimento="{{ appt.numero_procedimento or '-' }}"{% endif %}{% if 'user_id' in session and current_user.grau in (2, 3) %} data-internacao-url="{{ url_for('internacao', id=appt.id) }}" data-internacao-pending="{{ '1' if not appt.sala_cirurgica or not appt.quarto else '0' }}" data-edit-url="{{ url_for('edit', id=appt.id) }}" data-delete-url="{{ url_for('delete', id=appt.id) }}"{% endif %}>
+                            <div class="appointment {% if appt.esta_concluido %}appointment-done{% endif %} {% if reminder_status.get(appt.id) %}{{ reminder_status.get(appt.id) }}{% endif %}" data-hora="{{ appt.hora.strftime('%H:%M') }}" data-paciente="{{ appt.nome_paciente }}" data-medico="{{ appt.nome_medico }}" data-crm="{{ appt.crm_medico }}" data-procedimento="{{ appt.procedimento }}" data-cid="{{ appt.cid_procedimento }}" data-observacao="{{ appt.observacao or '-' }}" data-protocolo="{{ appt.protocolo or '' }}" data-concluido="{{ '1' if appt.esta_concluido else '0' }}"{% if 'user_id' in session %} data-numero-procedimento="{{ appt.numero_procedimento or '-' }}"{% endif %}{% if 'user_id' in session and current_user.grau in (2, 3) %} data-internacao-url="{{ url_for('internacao', id=appt.id) }}" data-internacao-pending="{{ '1' if not appt.sala_cirurgica or not appt.quarto else '0' }}" data-edit-url="{{ url_for('edit', id=appt.id) }}" data-delete-url="{{ url_for('delete', id=appt.id) }}"{% endif %}>
                                 <p>{{ appt.hora.strftime('%H:%M') }} - <span class="{% if appt.esta_concluido %}appointment-patient-done{% endif %}">{{ appt.nome_paciente }}</span></p>
                                 {% if 'user_id' in session %}
                                     <p><strong>Nº Procedimento:</strong> {{ appt.numero_procedimento or '-' }}</p>
@@ -130,7 +130,7 @@
                             const protocolo = appt.dataset.protocolo;
                             const numeroProcedimento = appt.dataset.numeroProcedimento;
                             const item = document.createElement('div');
-                            item.className = 'modal-appointment';
+                            item.className = 'modal-appointment' + (concluido ? ' modal-appointment-done' : '');
                             const concluido = appt.dataset.concluido === '1';
                             item.innerHTML = '<h4>' + hora + ' - <span class="' + (concluido ? 'appointment-patient-done' : '') + '">' + paciente + '</span></h4>' +
                                 (numeroProcedimento ? '<p><strong>Nº Procedimento:</strong> ' + numeroProcedimento + '</p>' : '') +
@@ -216,7 +216,7 @@
                             {% endif %}
                             {% set ns.prev_date = appt.data %}
                         {% endif %}
-                        <tr class="{% if reminder_status.get(appt.id) %}{{ reminder_status.get(appt.id) }}{% endif %}">
+                        <tr class="{% if appt.esta_concluido %}appointment-row-done {% endif %}{% if reminder_status.get(appt.id) %}{{ reminder_status.get(appt.id) }}{% endif %}">
                             <td>
                                 <span class="date-full">{{ appt.data.strftime('%d/%m/%Y') }}</span>
                                 <span class="date-day-only">{{ appt.data.day }}</span>

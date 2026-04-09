@@ -468,6 +468,11 @@ main {
     border-radius: 4px;
 }
 
+.appointment-done {
+    opacity: 0.7;
+    background-color: #d7e6e2;
+}
+
 .appointment-patient-done {
     text-decoration: line-through;
     text-decoration-thickness: 1.5px;
@@ -553,6 +558,10 @@ main {
     border-bottom: 1px solid #e0e0e0;
     padding-bottom: 1rem;
     margin-bottom: 1rem;
+}
+
+.modal-appointment-done {
+    opacity: 0.72;
 }
 
 .modal-appointment:last-child {
@@ -641,6 +650,14 @@ main {
 
 .appointments-table tbody tr:hover {
     background-color: #e8f5f2;
+}
+
+.appointments-table tbody tr.appointment-row-done {
+    opacity: 0.7;
+}
+
+.appointments-table tbody tr.appointment-row-done td {
+    background-color: #eef4f2;
 }
 
 .appointments-table .actions-cell {
