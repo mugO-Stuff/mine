@@ -24,7 +24,8 @@ PT_BR_MONTH_NAMES = {
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///agendamentos.db'
+import os
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://agendadia_db_user:ayunq0emDTv9B92NwdW5dWGdWFEChBjr@dpg-d7bgb5n5r7bs73dndj9g-a/agendadia_db')
 db = SQLAlchemy(app)
 
 UPLOAD_COMPROVANTES_FOLDER = os.path.join('uploads', 'comprovantes')
