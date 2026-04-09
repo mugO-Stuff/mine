@@ -256,6 +256,18 @@ header h1 {
     flex-wrap: wrap;
 }
 
+.header-home-link {
+    display: inline-block;
+    padding: 0.45rem 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 999px;
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.header-home-link:hover {
+    background-color: rgba(255, 255, 255, 0.22);
+}
+
 header a {
     color: white;
     text-decoration: none;
@@ -1632,5 +1644,209 @@ button:hover {
     }
     body, html {
         overflow-x: hidden;
+    }
+}
+
+/* ── Anestesistas: tag no calendário principal ─────────────────────────────── */
+
+.anest-tag {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #1a237e;
+    background-color: #e8eaf6;
+    border: 1px solid #9fa8da;
+    border-radius: 4px;
+    padding: 0.1rem 0.35rem;
+    margin: 0.2rem 0 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* ── Anestesistas: botão nav na tela principal ─────────────────────────────── */
+
+.anest-nav-btn {
+    background-color: #283593 !important;
+}
+
+.anest-nav-btn:hover {
+    background-color: #1a237e !important;
+}
+
+/* ── Anestesistas: calendário de escala ─────────────────────────────────────── */
+
+.anest-info-bar {
+    background: #e3f2fd;
+    border: 1px solid #90caf9;
+    color: #0d47a1;
+    border-radius: 6px;
+    padding: 0.55rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+}
+
+.anest-calendar {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
+.anest-day {
+    background: #e8f5f2;
+    border: 1px solid #b2dfdb;
+    border-radius: 8px;
+    padding: 0.55rem 0.6rem;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.anest-day-today {
+    border-color: #004d40;
+    background: #c8e6c9;
+}
+
+.anest-day-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.25rem;
+}
+
+.anest-day-num {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #004d40;
+}
+
+.anest-day-weekday {
+    font-size: 0.72rem;
+    color: #00695c;
+}
+
+.anest-nome {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1a237e;
+    background: #e8eaf6;
+    border-radius: 4px;
+    padding: 0.25rem 0.4rem;
+    flex: 1;
+}
+
+.anest-actions {
+    display: flex;
+    gap: 0.2rem;
+    flex-shrink: 0;
+}
+
+.anest-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    line-height: 1;
+}
+
+.anest-btn-edit {
+    color: #1565c0;
+}
+
+.anest-btn-edit:hover {
+    background: #bbdefb;
+}
+
+.anest-btn-del {
+    color: #c62828;
+}
+
+.anest-btn-del:hover {
+    background: #ffcdd2;
+}
+
+.anest-btn-add {
+    background: none;
+    border: 1px dashed #80cbc4;
+    border-radius: 4px;
+    color: #00695c;
+    font-size: 0.78rem;
+    cursor: pointer;
+    padding: 0.25rem 0.4rem;
+    width: 100%;
+    text-align: left;
+}
+
+.anest-btn-add:hover {
+    background: #e0f2f1;
+}
+
+.anest-vazio {
+    color: #aaa;
+    font-size: 0.85rem;
+}
+
+/* ── Anestesistas: modal de edição ─────────────────────────────────────────── */
+
+.anest-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1100;
+    padding: 1rem;
+}
+
+.anest-modal-box {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+    position: relative;
+}
+
+.anest-modal-box h3 {
+    margin: 0 0 1rem;
+    color: #1a237e;
+}
+
+/* ── Responsivo: calendário de anestesistas ─────────────────────────────────── */
+
+@media (max-width: 1024px) {
+    .anest-calendar {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .anest-calendar {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.35rem;
+    }
+    .anest-day {
+        min-height: 60px;
+        padding: 0.35rem;
+    }
+    .anest-day-num {
+        font-size: 0.9rem;
+    }
+    .anest-nome {
+        font-size: 0.72rem;
+        padding: 0.2rem 0.3rem;
+    }
+    .anest-tag {
+        font-size: 0.65rem;
+        padding: 0.08rem 0.25rem;
     }
 }

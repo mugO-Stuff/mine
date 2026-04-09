@@ -29,6 +29,7 @@
     <header>
         <h1>AGENDAMENTOS</h1>
         <nav class="header-nav">
+      <a class="header-home-link" href="{{ url_for('index') }}">Agendamentos</a>
         {% if current_user %}
             {% if current_user.cargo == 'admin' or current_user.grau == 3 %}
                 <a href="{{ url_for('admin') }}">Admin</a>

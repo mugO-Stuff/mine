@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- Navegação desktop -->
+<div class="month-nav month-nav-desktop">
+    <a class="month-link" href="{{ url_for('anestesistas', year=prev_year, month=prev_month) }}">← Mês Anterior</a>
+    <span class="month-title">Escala de Anestesistas — {{ month_name }} de {{ year }}</span>
+    <a class="month-link" href="{{ url_for('anestesistas', year=next_year, month=next_month) }}">Próximo Mês →</a>
+</div>
+
+<!-- Navegação mobile -->
+<div class="month-nav-mobile">
+    <div class="month-nav-btn">
+        <a class="month-link" href="{{ url_for('anestesistas', year=prev_year, month=prev_month) }}">← Mês Anterior</a>
+    </div>
+    <div class="month-title-mobile">Anestesistas — {{ month_name }}/{{ year }}</div>
+    <div class="month-nav-btn">
+        <a class="month-link" href="{{ url_for('anestesistas', year=next_year, month=next_month) }}">Próximo Mês →</a>
+    </div>
+</div>
+
+{% if 'user_id' not in session %}
+    <p class="anest-info-bar">Visualização pública — <a href="{{ url_for('login') }}">faça login</a> para editar a escala.</p>
+{% endif %}
+
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        <ul class="flash-messages">
+            {% for message in messages %}
+                <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endwith %}
+
+<div class="anest-calendar">
+    {% for d in all_dates %}
+        {% set escala = escala_por_dia.get(d) %}
+        <div class="anest-day {% if d == today %}anest-day-today{% endif %}">
+            <div class="anest-day-header">
+                <span class="anest-day-num">{{ d.day }}</span>
+                <span class="anest-day-weekday">{{ ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'][d.weekday()] }}</span>
+            </div>
+
+            {% if escala %}
+                <div class="anest-nome">
+                    <span>{{ escala.nome }}</span>
+                    {% if 'user_id' in session and current_user.grau >= 2 %}
+                        <div class="anest-actions">
+                            <!-- botão editar abre inline form -->
+                            <button type="button" class="anest-btn anest-btn-edit"
+                                data-date="{{ d.strftime('%Y-%m-%d') }}"
+                                data-nome="{{ escala.nome }}"
+                                data-id="{{ escala.id }}">✎</button>
+                            <form method="post" action="{{ url_for('anestesista_delete', escala_id=escala.id) }}" style="display:inline">
+                                <input type="hidden" name="year" value="{{ year }}">
+                                <input type="hidden" name="month" value="{{ month }}">
+                                <button type="submit" class="anest-btn anest-btn-del"
+                                    onclick="return confirm('Remover anestesista deste dia?')">✕</button>
+                            </form>
+                        </div>
+                    {% endif %}
+                </div>
+            {% else %}
+                {% if 'user_id' in session and current_user.grau >= 2 %}
+                    <button type="button" class="anest-btn-add"
+                        data-date="{{ d.strftime('%Y-%m-%d') }}">+ Definir</button>
+                {% else %}
+                    <span class="anest-vazio">—</span>
+                {% endif %}
+            {% endif %}
+        </div>
+    {% endfor %}
+</div>
+
+<!-- Modal/inline form para editar ou adicionar anestesista -->
+{% if 'user_id' in session and current_user.grau >= 2 %}
+<div id="anest-modal" class="anest-modal-overlay" style="display:none">
+    <div class="anest-modal-box">
+        <button type="button" id="anest-modal-close" class="modal-close">&times;</button>
+        <h3 id="anest-modal-title">Definir Anestesista</h3>
+        <form method="post" action="{{ url_for('anestesista_set') }}" id="anest-form">
+            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="month" value="{{ month }}">
+            <input type="hidden" name="data" id="anest-form-data">
+            <label for="anest-form-nome">Nome do Anestesista:</label>
+            <input type="text" id="anest-form-nome" name="nome" required autocomplete="off" placeholder="Ex.: Dr. João Silva">
+            <button type="submit">Salvar</button>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('anest-modal');
+    const formData = document.getElementById('anest-form-data');
+    const formNome = document.getElementById('anest-form-nome');
+    const modalTitle = document.getElementById('anest-modal-title');
+    const closeBtn = document.getElementById('anest-modal-close');
+
+    function openModal(dateVal, nome, label) {
+        formData.value = dateVal;
+        formNome.value = nome || '';
+        modalTitle.textContent = label;
+        modal.style.display = 'flex';
+        formNome.focus();
+    }
+
+    document.querySelectorAll('.anest-btn-add').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const d = this.dataset.date;
+            const parts = d.split('-');
+            openModal(d, '', 'Definir Anestesista — ' + parts[2] + '/' + parts[1] + '/' + parts[0]);
+        });
+    });
+
+    document.querySelectorAll('.anest-btn-edit').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const d = this.dataset.date;
+            const parts = d.split('-');
+            openModal(d, this.dataset.nome, 'Editar Anestesista — ' + parts[2] + '/' + parts[1] + '/' + parts[0]);
+        });
+    });
+
+    closeBtn.addEventListener('click', function () {
+        modal.style.display = 'none';
+    });
+
+    modal.addEventListener('click', function (e) {
+        if (e.target === modal) modal.style.display = 'none';
+    });
+});
+</script>
+{% endif %}
+
+{% endblock %}

@@ -23,6 +23,7 @@
 <div class="view-options">
     <a class="view-btn {% if view_mode == 'calendar' %}active{% endif %}" href="{{ url_for('index', year=year, month=month, view='calendar') }}">📅 Calendário</a>
     <a class="view-btn {% if view_mode == 'line' %}active{% endif %}" href="{{ url_for('index', year=year, month=month, view='line') }}">📋 Lista</a>
+    <a class="view-btn anest-nav-btn" href="{{ url_for('anestesistas', year=year, month=month) }}">💉 Anestesistas</a>
 </div>
 
 {% if view_mode == 'line' %}
@@ -55,6 +56,10 @@
         {% for date, appts in appointments.items() %}
             <div class="day day-clickable" data-date="{{ date.strftime('%d/%m/%Y') }}">
                 <h3>{{ date.day }}</h3>
+                {% set anest_nome = anestesista_por_dia.get(date) %}
+                {% if anest_nome %}
+                    <div class="anest-tag">💉 {{ anest_nome }}</div>
+                {% endif %}
                 <div class="appointments-list">
                     {% if appts %}
                         {% for appt in appts %}

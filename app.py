@@ -27,7 +27,7 @@ PT_BR_MONTH_NAMES = {
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'
 import os
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://agendadia_db_user:ayunq0emDTv9B92NwdW5dWGdWFEChBjr@dpg-d7bgb5n5r7bs73dndj9g-a/agendadia_db')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///agendadia.db')
 db = SQLAlchemy(app)
 ASSET_VERSION = os.environ.get('ASSET_VERSION', datetime.utcnow().strftime('%Y%m%d%H%M%S'))
 
@@ -79,6 +79,12 @@ class Procedimento(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
     cid = db.Column(db.String(20), unique=True, nullable=False)
+
+class EscalaAnestesista(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    data = db.Column(db.Date, nullable=False, unique=True, index=True)
+    nome = db.Column(db.String(100), nullable=False)
+    updated_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
 
 class Comprovante(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -298,6 +304,13 @@ def index():
     # Get all medicos for color mapping and filter options
     medicos = Medico.query.order_by(Medico.nome).all()
     medico_colors = {medico.nome: medico.cor for medico in medicos}
+
+    # Escala de anestesistas do mês para exibir no calendário principal
+    escalas_mes = EscalaAnestesista.query.filter(
+        EscalaAnestesista.data >= date(year, month, 1),
+        EscalaAnestesista.data < date(next_year, next_month, 1),
+    ).all()
+    anestesista_por_dia = {e.data: e.nome for e in escalas_mes}
     
     return render_template(
         'index.html',
@@ -318,6 +331,7 @@ def index():
         protocol_filter=protocol_filter,
         reminder_status=reminder_status,
         today=today,
+        anestesista_por_dia=anestesista_por_dia,
     )
 
 @app.route('/service-worker.js')
@@ -383,51 +397,51 @@ def perfil():
     if request.method == 'POST':
         action = request.form.get('action')
 
-        if __name__ == '__main__':
-            with app.app_context():
-                db.create_all()
-                # As linhas abaixo são específicas para SQLite e PRAGMA, não funcionam no PostgreSQL
-                # Por isso, só execute se ainda usar SQLite
-                if app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite'):
-                    from sqlalchemy import text
-                    with db.engine.connect() as conn:
-                        result = conn.execute(text("PRAGMA table_info('user')")).fetchall()
-                        columns = [row[1] for row in result]
-                        if 'grau' not in columns:
-                            conn.execute(text("ALTER TABLE user ADD COLUMN grau INTEGER DEFAULT 1"))
-                    with db.engine.connect() as conn:
-                        result = conn.execute(text("PRAGMA table_info('medico')")).fetchall()
-                        columns = [row[1] for row in result]
-                        if 'cor' not in columns:
-                            conn.execute(text("ALTER TABLE medico ADD COLUMN cor VARCHAR(7) DEFAULT '#004d40'"))
-                    with db.engine.connect() as conn:
-                        result = conn.execute(text("PRAGMA table_info('agendamento')")).fetchall()
-                        columns = [row[1] for row in result]
-                        if 'numero_procedimento' not in columns:
-                            conn.execute(text("ALTER TABLE agendamento ADD COLUMN numero_procedimento VARCHAR(40)"))
-                        if 'sala_cirurgica' not in columns:
-                            conn.execute(text("ALTER TABLE agendamento ADD COLUMN sala_cirurgica VARCHAR(50)"))
-                        if 'quarto' not in columns:
-                            conn.execute(text("ALTER TABLE agendamento ADD COLUMN quarto VARCHAR(50)"))
-                        if 'protocolo' not in columns:
-                            conn.execute(text("ALTER TABLE agendamento ADD COLUMN protocolo VARCHAR(50)"))
-                    with db.engine.connect() as conn:
-                        result = conn.execute(text("PRAGMA table_info('comprovante')")).fetchall()
-                        columns = [row[1] for row in result]
-                        if 'arquivo_comprovante' not in columns:
-                            conn.execute(text("ALTER TABLE comprovante ADD COLUMN arquivo_comprovante VARCHAR(255)"))
+        if action == 'dados':
+            nome = request.form.get('nome', '').strip()
+            cargo = request.form.get('cargo', '').strip()
 
-                    normalizar_numero_procedimento()
+            if not nome or not cargo:
+                flash('Nome e cargo são obrigatórios.')
+                return redirect(url_for('perfil'))
 
-                    import os
-                    os.makedirs(os.path.join(app.static_folder, UPLOAD_COMPROVANTES_FOLDER), exist_ok=True)
-                    # Create default admin if not exists
-                    admin = User.query.filter_by(nome='Gestão', cargo='admin').order_by(User.id).first()
-                    if not admin:
-                        admin = User(nome='Gestão', cargo='admin', senha='13092026', status='approved', grau=3)
-                        db.session.add(admin)
-                        db.session.commit()
-                app.run(host="0.0.0.0", port=5000, debug=True)
+            existing_user = User.query.filter(User.nome == nome, User.id != user.id).first()
+            if existing_user:
+                flash('Já existe outro usuário com este nome.')
+                return redirect(url_for('perfil'))
+
+            user.nome = nome
+            user.cargo = cargo
+            db.session.commit()
+            flash('Dados do perfil atualizados com sucesso.')
+            return redirect(url_for('perfil'))
+
+        if action == 'senha':
+            senha_atual = request.form.get('senha_atual', '')
+            nova_senha = request.form.get('nova_senha', '')
+            confirmar_senha = request.form.get('confirmar_senha', '')
+
+            if senha_atual != user.senha:
+                flash('A senha atual está incorreta.')
+                return redirect(url_for('perfil'))
+
+            if len(nova_senha) < 6 or not nova_senha.isdigit():
+                flash('A nova senha deve ter pelo menos 6 dígitos numéricos.')
+                return redirect(url_for('perfil'))
+
+            if nova_senha != confirmar_senha:
+                flash('A confirmação da senha não confere.')
+                return redirect(url_for('perfil'))
+
+            user.senha = nova_senha
+            db.session.commit()
+            flash('Senha alterada com sucesso.')
+            return redirect(url_for('perfil'))
+
+        flash('Ação inválida.')
+        return redirect(url_for('perfil'))
+
+    return render_template('perfil.html', user=user, managed_by_admin=False)
 
 @app.route('/admin/perfil_usuario/<int:user_id>', methods=['GET', 'POST'])
 def perfil_usuario(user_id):
@@ -1008,6 +1022,107 @@ def pacientes():
         pacientes=pacientes_data,
         search=request.args.get('q', '').strip(),
     )
+
+# ─── Escala de Anestesistas ───────────────────────────────────────────────────
+
+@app.route('/anestesistas')
+def anestesistas():
+    today = date.today()
+    year = request.args.get('year', today.year, type=int)
+    month = request.args.get('month', today.month, type=int)
+    year, month = normalize_month(year, month)
+
+    cal = calendar.monthcalendar(year, month)
+    prev_year, prev_month = normalize_month(year, month - 1)
+    next_year, next_month = normalize_month(year, month + 1)
+
+    month_start = date(year, month, 1)
+    next_month_start = date(next_year, next_month, 1)
+
+    escalas = EscalaAnestesista.query.filter(
+        EscalaAnestesista.data >= month_start,
+        EscalaAnestesista.data < next_month_start,
+    ).all()
+    escala_por_dia = {e.data: e for e in escalas}
+
+    all_dates = []
+    for week in cal:
+        for day in week:
+            if day != 0:
+                all_dates.append(date(year, month, day))
+
+    return render_template(
+        'anestesistas.html',
+        year=year,
+        month=month,
+        month_name=PT_BR_MONTH_NAMES[month],
+        prev_year=prev_year,
+        prev_month=prev_month,
+        next_year=next_year,
+        next_month=next_month,
+        all_dates=all_dates,
+        escala_por_dia=escala_por_dia,
+        today=today,
+    )
+
+
+@app.route('/anestesistas/set', methods=['POST'])
+def anestesista_set():
+    if 'user_id' not in session:
+        flash('É necessário fazer login para editar a escala.')
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if not user or user.grau < 2:
+        flash('Acesso negado.')
+        return redirect(url_for('anestesistas'))
+
+    data_raw = request.form.get('data', '').strip()
+    nome = request.form.get('nome', '').strip()
+    year = request.form.get('year', type=int)
+    month = request.form.get('month', type=int)
+
+    if not data_raw or not nome:
+        flash('Data e nome do anestesista são obrigatórios.')
+        return redirect(url_for('anestesistas', year=year, month=month))
+
+    try:
+        dia = datetime.strptime(data_raw, '%Y-%m-%d').date()
+    except ValueError:
+        flash('Data inválida.')
+        return redirect(url_for('anestesistas', year=year, month=month))
+
+    escala = EscalaAnestesista.query.filter_by(data=dia).first()
+    if escala:
+        escala.nome = nome
+        escala.updated_by = user.id
+    else:
+        escala = EscalaAnestesista(data=dia, nome=nome, updated_by=user.id)
+        db.session.add(escala)
+
+    db.session.commit()
+    return redirect(url_for('anestesistas', year=year, month=month))
+
+
+@app.route('/anestesistas/delete/<int:escala_id>', methods=['POST'])
+def anestesista_delete(escala_id):
+    if 'user_id' not in session:
+        flash('É necessário fazer login.')
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if not user or user.grau < 2:
+        flash('Acesso negado.')
+        return redirect(url_for('anestesistas'))
+
+    escala = EscalaAnestesista.query.get_or_404(escala_id)
+    year = escala.data.year
+    month = escala.data.month
+    db.session.delete(escala)
+    db.session.commit()
+    return redirect(url_for('anestesistas', year=year, month=month))
+
+# ─────────────────────────────────────────────────────────────────────────────
 
 @app.route('/admin/delete_user/<int:user_id>', methods=['POST'])
 def delete_user(user_id):
