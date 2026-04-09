@@ -2,7 +2,7 @@
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func, text, UniqueConstraint
+from sqlalchemy import func, text, UniqueConstraint, inspect
 from datetime import datetime, date, timedelta
 from collections import Counter
 import calendar
@@ -255,39 +255,39 @@ def normalizar_numero_procedimento():
     return alterados
 
 def ensure_sqlite_legacy_columns():
-    if not app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite'):
-        return
+    inspector = inspect(db.engine)
 
-    with db.engine.connect() as conn:
-        result = conn.execute(text("PRAGMA table_info('user')")).fetchall()
-        columns = [row[1] for row in result]
-        if 'grau' not in columns:
-            conn.execute(text("ALTER TABLE user ADD COLUMN grau INTEGER DEFAULT 1"))
+    def get_columns(table_name):
+        try:
+            return {col['name'] for col in inspector.get_columns(table_name)}
+        except Exception:
+            return set()
 
-    with db.engine.connect() as conn:
-        result = conn.execute(text("PRAGMA table_info('medico')")).fetchall()
-        columns = [row[1] for row in result]
-        if 'cor' not in columns:
+    user_columns = get_columns('user')
+    medico_columns = get_columns('medico')
+    agendamento_columns = get_columns('agendamento')
+    comprovante_columns = get_columns('comprovante')
+
+    with db.engine.begin() as conn:
+        if user_columns and 'grau' not in user_columns:
+            conn.execute(text("ALTER TABLE \"user\" ADD COLUMN grau INTEGER DEFAULT 1"))
+
+        if medico_columns and 'cor' not in medico_columns:
             conn.execute(text("ALTER TABLE medico ADD COLUMN cor VARCHAR(7) DEFAULT '#004d40'"))
 
-    with db.engine.connect() as conn:
-        result = conn.execute(text("PRAGMA table_info('agendamento')")).fetchall()
-        columns = [row[1] for row in result]
-        if 'numero_procedimento' not in columns:
-            conn.execute(text("ALTER TABLE agendamento ADD COLUMN numero_procedimento VARCHAR(40)"))
-        if 'whatsapp_paciente' not in columns:
-            conn.execute(text("ALTER TABLE agendamento ADD COLUMN whatsapp_paciente VARCHAR(30)"))
-        if 'sala_cirurgica' not in columns:
-            conn.execute(text("ALTER TABLE agendamento ADD COLUMN sala_cirurgica VARCHAR(50)"))
-        if 'quarto' not in columns:
-            conn.execute(text("ALTER TABLE agendamento ADD COLUMN quarto VARCHAR(50)"))
-        if 'protocolo' not in columns:
-            conn.execute(text("ALTER TABLE agendamento ADD COLUMN protocolo VARCHAR(50)"))
+        if agendamento_columns:
+            if 'numero_procedimento' not in agendamento_columns:
+                conn.execute(text("ALTER TABLE agendamento ADD COLUMN numero_procedimento VARCHAR(40)"))
+            if 'whatsapp_paciente' not in agendamento_columns:
+                conn.execute(text("ALTER TABLE agendamento ADD COLUMN whatsapp_paciente VARCHAR(30)"))
+            if 'sala_cirurgica' not in agendamento_columns:
+                conn.execute(text("ALTER TABLE agendamento ADD COLUMN sala_cirurgica VARCHAR(50)"))
+            if 'quarto' not in agendamento_columns:
+                conn.execute(text("ALTER TABLE agendamento ADD COLUMN quarto VARCHAR(50)"))
+            if 'protocolo' not in agendamento_columns:
+                conn.execute(text("ALTER TABLE agendamento ADD COLUMN protocolo VARCHAR(50)"))
 
-    with db.engine.connect() as conn:
-        result = conn.execute(text("PRAGMA table_info('comprovante')")).fetchall()
-        columns = [row[1] for row in result]
-        if 'arquivo_comprovante' not in columns:
+        if comprovante_columns and 'arquivo_comprovante' not in comprovante_columns:
             conn.execute(text("ALTER TABLE comprovante ADD COLUMN arquivo_comprovante VARCHAR(255)"))
 
 def ensure_admin_user(update_password=False):
