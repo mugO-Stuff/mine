@@ -52,11 +52,12 @@
 {% endif %}
 
 {% if view_mode == 'calendar' %}
+    {% set week_days = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'] %}
     <div class="calendar">
         {% for date, appts in appointments.items() %}
             <div class="day day-clickable" data-date="{{ date.strftime('%d/%m/%Y') }}">
                 <div class="day-header-row">
-                    <h3>{{ date.day }}</h3>
+                    <h3>{{ date.day }} <span class="day-weekday">{{ week_days[date.weekday()] }}</span></h3>
                     {% if 'user_id' in session and current_user.grau in (2, 3) %}
                         <a class="day-add-btn" href="{{ url_for('create', date=date.strftime('%Y-%m-%d')) }}" aria-label="Novo agendamento em {{ date.strftime('%d/%m/%Y') }}">+</a>
                     {% endif %}
