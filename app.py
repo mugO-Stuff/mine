@@ -105,6 +105,18 @@ class EscalaAnestesista(db.Model):
     nome = db.Column(db.String(100), nullable=False)
     updated_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
 
+class EnfermagemRegistro(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome_colaborador = db.Column(db.String(100), nullable=False)
+    nome_medico = db.Column(db.String(100), nullable=False)
+    crm_medico = db.Column(db.Integer, nullable=False)
+    procedimento = db.Column(db.String(100), nullable=False)
+    cid_procedimento = db.Column(db.String(80), nullable=False)
+    data = db.Column(db.Date, nullable=False, index=True)
+    observacao = db.Column(db.Text)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class Comprovante(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     agendamento_id = db.Column(db.Integer, db.ForeignKey('agendamento.id'), nullable=False)
@@ -213,6 +225,25 @@ def parse_currency_value(raw_value):
     if ',' in normalized:
         normalized = normalized.replace('.', '').replace(',', '.')
     return float(normalized)
+
+def resolve_medico_crm(nome_medico, submitted_crm=''):
+    submitted_crm = (submitted_crm or '').strip()
+    if submitted_crm.isdigit():
+        return int(submitted_crm)
+
+    medico = Medico.query.filter(func.lower(Medico.nome) == (nome_medico or '').strip().lower()).first()
+    return medico.crm if medico else 0
+
+def resolve_procedimento_cid(procedimento_name, submitted_cid=''):
+    procedimento_name = (procedimento_name or '').strip()
+    submitted_cid = (submitted_cid or '').strip()
+    procedimento_obj = Procedimento.query.filter(func.lower(Procedimento.nome) == procedimento_name.lower()).first()
+
+    if procedimento_obj and submitted_cid and submitted_cid != procedimento_obj.cid:
+        return f"{submitted_cid} - {procedimento_obj.cid}"
+    if procedimento_obj:
+        return procedimento_obj.cid
+    return submitted_cid
 
 def build_numero_procedimento(agendamento_id):
     # Simple globally-unique number derived from agendamento ID.
@@ -1043,20 +1074,8 @@ def create():
         procedimento_name = request.form['procedimento'].strip()
         submitted_cid = request.form['cid_procedimento'].strip()
 
-        crm_medico = None
-        if submitted_crm.isdigit():
-            crm_medico = int(submitted_crm)
-        else:
-            medico = Medico.query.filter(func.lower(Medico.nome) == nome_medico.lower()).first()
-            crm_medico = medico.crm if medico else 0
-
-        procedimento_obj = Procedimento.query.filter(func.lower(Procedimento.nome) == procedimento_name.lower()).first()
-        if procedimento_obj and submitted_cid and submitted_cid != procedimento_obj.cid:
-            cid_val = f"{submitted_cid} - {procedimento_obj.cid}"
-        elif procedimento_obj:
-            cid_val = procedimento_obj.cid
-        else:
-            cid_val = submitted_cid
+        crm_medico = resolve_medico_crm(nome_medico, submitted_crm)
+        cid_val = resolve_procedimento_cid(procedimento_name, submitted_cid)
 
         agendamento = Agendamento(
             nome_paciente=request.form['nome_paciente'],
@@ -1092,19 +1111,8 @@ def edit(id):
         procedimento_name = request.form['procedimento'].strip()
         submitted_cid = request.form['cid_procedimento'].strip()
 
-        if submitted_crm.isdigit():
-            crm_medico = int(submitted_crm)
-        else:
-            medico = Medico.query.filter(func.lower(Medico.nome) == nome_medico.lower()).first()
-            crm_medico = medico.crm if medico else 0
-
-        procedimento_obj = Procedimento.query.filter(func.lower(Procedimento.nome) == procedimento_name.lower()).first()
-        if procedimento_obj and submitted_cid and submitted_cid != procedimento_obj.cid:
-            cid_val = f"{submitted_cid} - {procedimento_obj.cid}"
-        elif procedimento_obj:
-            cid_val = procedimento_obj.cid
-        else:
-            cid_val = submitted_cid
+        crm_medico = resolve_medico_crm(nome_medico, submitted_crm)
+        cid_val = resolve_procedimento_cid(procedimento_name, submitted_cid)
 
         agendamento.nome_paciente = request.form['nome_paciente']
         agendamento.nome_medico = nome_medico
@@ -1383,6 +1391,124 @@ def pacientes():
         pacientes=pacientes_data,
         search=request.args.get('q', '').strip(),
     )
+
+@app.route('/enfermagem')
+def enfermagem():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    today = date.today()
+    year = request.args.get('year', today.year, type=int)
+    month = request.args.get('month', today.month, type=int)
+    year, month = normalize_month(year, month)
+
+    cal = calendar.monthcalendar(year, month)
+    registros_por_dia = {}
+    all_dates = []
+    for week in cal:
+        for day in week:
+            if day != 0:
+                d = date(year, month, day)
+                if d.weekday() < 6:
+                    all_dates.append(d)
+                    registros_por_dia[d] = EnfermagemRegistro.query.filter_by(data=d).order_by(EnfermagemRegistro.id.asc()).all()
+
+    prev_year, prev_month = normalize_month(year, month - 1)
+    next_year, next_month = normalize_month(year, month + 1)
+
+    return render_template(
+        'enfermagem.html',
+        year=year,
+        month=month,
+        month_name=PT_BR_MONTH_NAMES[month],
+        prev_year=prev_year,
+        prev_month=prev_month,
+        next_year=next_year,
+        next_month=next_month,
+        registros_por_dia=registros_por_dia,
+        all_dates=all_dates,
+    )
+
+@app.route('/enfermagem/create', methods=['GET', 'POST'])
+def enfermagem_create():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    medicos = [{'id': m.id, 'nome': m.nome, 'crm': m.crm, 'cor': m.cor} for m in Medico.query.order_by(Medico.nome).all()]
+    procedimentos = [{'id': p.id, 'nome': p.nome, 'cid': p.cid} for p in Procedimento.query.order_by(Procedimento.nome).all()]
+    selected_date = request.args.get('date', '')
+
+    if request.method == 'POST':
+        nome_colaborador = request.form.get('nome_colaborador', '').strip()
+        nome_medico = request.form.get('nome_medico', '').strip()
+        procedimento_name = request.form.get('procedimento', '').strip()
+        submitted_crm = request.form.get('crm_medico', '').strip()
+        submitted_cid = request.form.get('cid_procedimento', '').strip()
+
+        if not nome_colaborador or not nome_medico or not procedimento_name:
+            flash('Preencha colaborador, médico e procedimento.')
+            return render_template('enfermagem_edit.html', registro=None, medicos=medicos, procedimentos=procedimentos, selected_date=selected_date)
+
+        crm_medico = resolve_medico_crm(nome_medico, submitted_crm)
+        cid_val = resolve_procedimento_cid(procedimento_name, submitted_cid)
+
+        registro = EnfermagemRegistro(
+            nome_colaborador=nome_colaborador,
+            nome_medico=nome_medico,
+            crm_medico=crm_medico,
+            procedimento=procedimento_name,
+            cid_procedimento=cid_val,
+            data=datetime.strptime(request.form['data'], '%Y-%m-%d').date(),
+            observacao=request.form.get('observacao', ''),
+            created_by=session.get('user_id'),
+        )
+        db.session.add(registro)
+        db.session.commit()
+        return redirect(url_for('enfermagem'))
+
+    return render_template('enfermagem_edit.html', registro=None, medicos=medicos, procedimentos=procedimentos, selected_date=selected_date)
+
+@app.route('/enfermagem/edit/<int:id>', methods=['GET', 'POST'])
+def enfermagem_edit(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    registro = EnfermagemRegistro.query.get_or_404(id)
+    medicos = [{'id': m.id, 'nome': m.nome, 'crm': m.crm, 'cor': m.cor} for m in Medico.query.order_by(Medico.nome).all()]
+    procedimentos = [{'id': p.id, 'nome': p.nome, 'cid': p.cid} for p in Procedimento.query.order_by(Procedimento.nome).all()]
+
+    if request.method == 'POST':
+        nome_colaborador = request.form.get('nome_colaborador', '').strip()
+        nome_medico = request.form.get('nome_medico', '').strip()
+        procedimento_name = request.form.get('procedimento', '').strip()
+        submitted_crm = request.form.get('crm_medico', '').strip()
+        submitted_cid = request.form.get('cid_procedimento', '').strip()
+
+        if not nome_colaborador or not nome_medico or not procedimento_name:
+            flash('Preencha colaborador, médico e procedimento.')
+            return render_template('enfermagem_edit.html', registro=registro, medicos=medicos, procedimentos=procedimentos)
+
+        registro.nome_colaborador = nome_colaborador
+        registro.nome_medico = nome_medico
+        registro.crm_medico = resolve_medico_crm(nome_medico, submitted_crm)
+        registro.procedimento = procedimento_name
+        registro.cid_procedimento = resolve_procedimento_cid(procedimento_name, submitted_cid)
+        registro.data = datetime.strptime(request.form['data'], '%Y-%m-%d').date()
+        registro.observacao = request.form.get('observacao', '')
+        db.session.commit()
+        return redirect(url_for('enfermagem'))
+
+    return render_template('enfermagem_edit.html', registro=registro, medicos=medicos, procedimentos=procedimentos)
+
+@app.route('/enfermagem/delete/<int:id>')
+def enfermagem_delete(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    registro = EnfermagemRegistro.query.get_or_404(id)
+    db.session.delete(registro)
+    db.session.commit()
+    return redirect(url_for('enfermagem'))
 
 # ─── Escala de Anestesistas ───────────────────────────────────────────────────
 

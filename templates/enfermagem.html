@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="month-nav month-nav-desktop">
+    <a class="month-link" href="{{ url_for('enfermagem', year=prev_year, month=prev_month) }}">← Mês Anterior</a>
+    <span class="month-title">Enfermagem — {{ month_name }} de {{ year }}</span>
+    <a class="month-link" href="{{ url_for('enfermagem', year=next_year, month=next_month) }}">Próximo Mês →</a>
+</div>
+
+<div class="month-nav-mobile">
+    <div class="month-nav-btn">
+        <a class="month-link" href="{{ url_for('enfermagem', year=prev_year, month=prev_month) }}">← Mês Anterior</a>
+    </div>
+    <div class="month-title-mobile">Enfermagem — {{ month_name }} de {{ year }}</div>
+    <div class="month-nav-btn">
+        <a class="month-link" href="{{ url_for('enfermagem', year=next_year, month=next_month) }}">Próximo Mês →</a>
+    </div>
+</div>
+
+<div class="view-options">
+    <a class="view-btn" href="{{ url_for('index', year=year, month=month, view='calendar') }}">📅 Agendamentos</a>
+    <a class="view-btn active" href="{{ url_for('enfermagem', year=year, month=month) }}">🩺 Enfermagem</a>
+</div>
+
+<div class="calendar">
+    {% set week_days = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'] %}
+    {% for date in all_dates %}
+        {% set regs = registros_por_dia.get(date, []) %}
+        <div class="day day-clickable" data-date="{{ date.strftime('%d/%m/%Y') }}">
+            <div class="day-header-row">
+                <h3>{{ date.day }} <span class="day-weekday">{{ week_days[date.weekday()] }}</span></h3>
+                <a class="day-add-btn" href="{{ url_for('enfermagem_create', date=date.strftime('%Y-%m-%d')) }}" aria-label="Novo registro em {{ date.strftime('%d/%m/%Y') }}">+</a>
+            </div>
+            <div class="appointments-list">
+                {% if regs %}
+                    {% for reg in regs %}
+                        <div class="appointment" data-colaborador="{{ reg.nome_colaborador }}" data-medico="{{ reg.nome_medico }}" data-crm="{{ reg.crm_medico }}" data-procedimento="{{ reg.procedimento }}" data-cid="{{ reg.cid_procedimento }}" data-observacao="{{ reg.observacao or '-' }}">
+                            <p><strong>{{ reg.nome_colaborador }}</strong></p>
+                            <p>{{ reg.nome_medico }} | CRM {{ reg.crm_medico }}</p>
+                            <p>{{ reg.procedimento }}</p>
+                            <div class="appointment-actions">
+                                <a href="{{ url_for('enfermagem_edit', id=reg.id) }}">Editar</a>
+                                <a href="{{ url_for('enfermagem_delete', id=reg.id) }}" onclick="return confirm('Excluir registro de enfermagem?')">Excluir</a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="no-appointments">Sem registros</p>
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<div id="day-modal" class="modal">
+    <div class="modal-content">
+        <button type="button" class="modal-close">&times;</button>
+        <h3 id="modal-title"></h3>
+        <div id="modal-body"></div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('day-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
+    const closeBtn = modal.querySelector('.modal-close');
+
+    document.querySelectorAll('.calendar .day-clickable').forEach(function(day) {
+        day.addEventListener('click', function(event) {
+            if (event.target.closest('a')) {
+                return;
+            }
+            const date = this.dataset.date;
+            const items = Array.from(this.querySelectorAll('.appointment'));
+
+            modalTitle.textContent = 'Enfermagem de ' + date;
+            modalBody.innerHTML = '';
+
+            if (items.length === 0) {
+                modalBody.innerHTML = '<p>Nenhum registro.</p>';
+            } else {
+                items.forEach(function(itemSource) {
+                    const item = document.createElement('div');
+                    item.className = 'modal-appointment';
+                    item.innerHTML =
+                        '<h4>' + itemSource.dataset.colaborador + '</h4>' +
+                        '<p><strong>Médico:</strong> ' + itemSource.dataset.medico + ' | <strong>CRM:</strong> ' + itemSource.dataset.crm + '</p>' +
+                        '<p><strong>Procedimento:</strong> ' + itemSource.dataset.procedimento + ' | <strong>CID:</strong> ' + itemSource.dataset.cid + '</p>' +
+                        '<p><strong>Observação:</strong> ' + itemSource.dataset.observacao + '</p>';
+                    modalBody.appendChild(item);
+                });
+            }
+
+            modal.classList.add('visible');
+        });
+    });
+
+    closeBtn.addEventListener('click', function() {
+        modal.classList.remove('visible');
+    });
+
+    modal.addEventListener('click', function(event) {
+        if (event.target === modal) {
+            modal.classList.remove('visible');
+        }
+    });
+});
+</script>
+{% endblock %}

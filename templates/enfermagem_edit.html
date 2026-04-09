@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>{% if registro %}Editar{% else %}Novo{% endif %} Registro de Enfermagem</h2>
+<form method="post">
+    {% if registro %}
+    <label for="registro_id">ID do Registro:</label>
+    <input type="text" id="registro_id" value="{{ registro.id }}" readonly>
+    {% endif %}
+
+    <label for="nome_colaborador">Nome do Colaborador:</label>
+    <input type="text" id="nome_colaborador" name="nome_colaborador" value="{{ registro.nome_colaborador if registro else '' }}" required>
+
+    <label for="nome_medico">Nome do Médico:</label>
+    <input type="text" id="nome_medico" name="nome_medico" value="{{ registro.nome_medico if registro else '' }}" required>
+
+    <label for="crm_medico">CRM do Médico:</label>
+    <input type="number" id="crm_medico" name="crm_medico" value="{{ registro.crm_medico if registro else '' }}" required>
+
+    <label for="procedimento">Procedimento:</label>
+    <input type="text" id="procedimento" name="procedimento" value="{{ registro.procedimento if registro else '' }}" required>
+
+    <label for="cid_procedimento">CID do Procedimento:</label>
+    <input type="text" id="cid_procedimento" name="cid_procedimento" value="{{ registro.cid_procedimento if registro else '' }}" required>
+
+    <label for="data">Data:</label>
+    <input type="date" id="data" name="data" value="{{ registro.data.strftime('%Y-%m-%d') if registro else selected_date|default('') }}" required>
+
+    <label for="observacao">Observação:</label>
+    <textarea id="observacao" name="observacao">{{ registro.observacao if registro else '' }}</textarea>
+
+    <button type="submit">Salvar</button>
+</form>
+
+<script>
+    const medicos = {{ medicos|tojson }};
+    const procedimentos = {{ procedimentos|tojson }};
+    const nomeMedicoInput = document.getElementById('nome_medico');
+    const crmInput = document.getElementById('crm_medico');
+    const procedimentoInput = document.getElementById('procedimento');
+    const cidInput = document.getElementById('cid_procedimento');
+
+    function findMedico(nome) {
+        return medicos.find(m => m.nome.toLowerCase().trim() === nome.toLowerCase().trim());
+    }
+
+    function findProcedimento(nome) {
+        return procedimentos.find(p => p.nome.toLowerCase().trim() === nome.toLowerCase().trim());
+    }
+
+    nomeMedicoInput.addEventListener('blur', () => {
+        const medico = findMedico(nomeMedicoInput.value);
+        if (medico) {
+            crmInput.value = medico.crm;
+        }
+    });
+
+    procedimentoInput.addEventListener('blur', () => {
+        const procedimento = findProcedimento(procedimentoInput.value);
+        if (procedimento && !cidInput.value.trim()) {
+            cidInput.value = procedimento.cid;
+        }
+    });
+
+    document.querySelector('form').addEventListener('submit', () => {
+        const procedimento = findProcedimento(procedimentoInput.value);
+        const enteredCid = cidInput.value.trim();
+        if (procedimento && enteredCid && enteredCid !== procedimento.cid) {
+            const parts = enteredCid.split('-').map(p => p.trim());
+            if (!parts.includes(procedimento.cid)) {
+                cidInput.value = `${enteredCid} - ${procedimento.cid}`;
+            }
+        }
+    });
+</script>
+{% endblock %}

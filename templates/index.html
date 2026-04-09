@@ -23,6 +23,9 @@
 <div class="view-options">
     <a class="view-btn {% if view_mode == 'calendar' %}active{% endif %}" href="{{ url_for('index', year=year, month=month, view='calendar') }}">📅 Calendário</a>
     <a class="view-btn {% if view_mode == 'line' %}active{% endif %}" href="{{ url_for('index', year=year, month=month, view='line') }}">📋 Lista</a>
+    {% if 'user_id' in session %}
+        <a class="view-btn" href="{{ url_for('enfermagem', year=year, month=month) }}">🩺 Enfermagem</a>
+    {% endif %}
     <a class="view-btn anest-nav-btn" href="{{ url_for('anestesistas', year=year, month=month) }}">💉 Anestesistas</a>
 </div>
 
