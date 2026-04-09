@@ -55,7 +55,12 @@
     <div class="calendar">
         {% for date, appts in appointments.items() %}
             <div class="day day-clickable" data-date="{{ date.strftime('%d/%m/%Y') }}">
-                <h3>{{ date.day }}</h3>
+                <div class="day-header-row">
+                    <h3>{{ date.day }}</h3>
+                    {% if 'user_id' in session and current_user.grau in (2, 3) %}
+                        <a class="day-add-btn" href="{{ url_for('create', date=date.strftime('%Y-%m-%d')) }}" aria-label="Novo agendamento em {{ date.strftime('%d/%m/%Y') }}">+</a>
+                    {% endif %}
+                </div>
                 {% set anest_nome = anestesista_por_dia.get(date) %}
                 {% if anest_nome %}
                     <div class="anest-tag">💉 {{ anest_nome }}</div>
@@ -63,8 +68,8 @@
                 <div class="appointments-list">
                     {% if appts %}
                         {% for appt in appts %}
-                            <div class="appointment {% if reminder_status.get(appt.id) %}{{ reminder_status.get(appt.id) }}{% endif %}" data-hora="{{ appt.hora.strftime('%H:%M') }}" data-paciente="{{ appt.nome_paciente }}" data-medico="{{ appt.nome_medico }}" data-crm="{{ appt.crm_medico }}" data-procedimento="{{ appt.procedimento }}" data-cid="{{ appt.cid_procedimento }}" data-observacao="{{ appt.observacao or '-' }}" data-protocolo="{{ appt.protocolo or '' }}"{% if 'user_id' in session %} data-numero-procedimento="{{ appt.numero_procedimento or '-' }}"{% endif %}{% if 'user_id' in session and current_user.grau in (2, 3) %} data-internacao-url="{{ url_for('internacao', id=appt.id) }}" data-internacao-pending="{{ '1' if not appt.sala_cirurgica or not appt.quarto else '0' }}" data-edit-url="{{ url_for('edit', id=appt.id) }}" data-delete-url="{{ url_for('delete', id=appt.id) }}"{% endif %}>
-                                <p>{{ appt.hora.strftime('%H:%M') }} - {{ appt.nome_paciente }}</p>
+                            <div class="appointment {% if reminder_status.get(appt.id) %}{{ reminder_status.get(appt.id) }}{% endif %}" data-hora="{{ appt.hora.strftime('%H:%M') }}" data-paciente="{{ appt.nome_paciente }}" data-medico="{{ appt.nome_medico }}" data-crm="{{ appt.crm_medico }}" data-procedimento="{{ appt.procedimento }}" data-cid="{{ appt.cid_procedimento }}" data-observacao="{{ appt.observacao or '-' }}" data-protocolo="{{ appt.protocolo or '' }}" data-concluido="{{ '1' if appt.esta_concluido else '0' }}"{% if 'user_id' in session %} data-numero-procedimento="{{ appt.numero_procedimento or '-' }}"{% endif %}{% if 'user_id' in session and current_user.grau in (2, 3) %} data-internacao-url="{{ url_for('internacao', id=appt.id) }}" data-internacao-pending="{{ '1' if not appt.sala_cirurgica or not appt.quarto else '0' }}" data-edit-url="{{ url_for('edit', id=appt.id) }}" data-delete-url="{{ url_for('delete', id=appt.id) }}"{% endif %}>
+                                <p>{{ appt.hora.strftime('%H:%M') }} - <span class="{% if appt.esta_concluido %}appointment-patient-done{% endif %}">{{ appt.nome_paciente }}</span></p>
                                 {% if 'user_id' in session %}
                                     <p><strong>Nº Procedimento:</strong> {{ appt.numero_procedimento or '-' }}</p>
                                 {% endif %}
@@ -126,7 +131,8 @@
                             const numeroProcedimento = appt.dataset.numeroProcedimento;
                             const item = document.createElement('div');
                             item.className = 'modal-appointment';
-                            item.innerHTML = '<h4>' + hora + ' - ' + paciente + '</h4>' +
+                            const concluido = appt.dataset.concluido === '1';
+                            item.innerHTML = '<h4>' + hora + ' - <span class="' + (concluido ? 'appointment-patient-done' : '') + '">' + paciente + '</span></h4>' +
                                 (numeroProcedimento ? '<p><strong>Nº Procedimento:</strong> ' + numeroProcedimento + '</p>' : '') +
                                 '<p><strong>Protocolo:</strong> ' + (protocolo || '-') + '</p>' +
                                 '<p><strong>Médico:</strong> ' + medico + ' | <strong>CRM:</strong> ' + crm + '</p>' +
@@ -218,8 +224,8 @@
                             <td class="col-hora">{{ appt.hora.strftime('%H:%M') }}</td>
                             <td>
                                 {% set first_name = appt.nome_paciente.split()[0] if appt.nome_paciente else '-' %}
-                                <span class="patient-name-full">{{ appt.nome_paciente }}</span>
-                                <span class="patient-name-short">{{ first_name }}</span>
+                                <span class="patient-name-full {% if appt.esta_concluido %}appointment-patient-done{% endif %}">{{ appt.nome_paciente }}</span>
+                                <span class="patient-name-short {% if appt.esta_concluido %}appointment-patient-done{% endif %}">{{ first_name }}</span>
                             </td>
                             <td>{{ appt.protocolo or '-' }}</td>
                             {% if 'user_id' in session %}
@@ -246,7 +252,7 @@
                                     </div>
 
                                     <div id="mobile-info-{{ appt.id }}" class="mobile-info-panel">
-                                        <p><strong>Paciente:</strong> {{ appt.nome_paciente }}</p>
+                                        <p><strong>Paciente:</strong> <span class="{% if appt.esta_concluido %}appointment-patient-done{% endif %}">{{ appt.nome_paciente }}</span></p>
                                         <p><strong>Nº Procedimento:</strong> {{ appt.numero_procedimento or '-' }}</p>
                                         <p><strong>Data:</strong> {{ appt.data.strftime('%d/%m/%Y') }}</p>
                                         <p><strong>Hora:</strong> {{ appt.hora.strftime('%H:%M') }}</p>

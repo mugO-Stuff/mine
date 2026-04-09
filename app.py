@@ -69,6 +69,11 @@ class Agendamento(db.Model):
     protocolo = db.Column(db.String(50))
     comprovantes = db.relationship('Comprovante', backref='agendamento', lazy=True, cascade='all, delete-orphan')
 
+    @property
+    def esta_concluido(self):
+        campos_finais = [self.protocolo, self.sala_cirurgica, self.quarto]
+        return self.data < date.today() and all(valor and str(valor).strip() for valor in campos_finais)
+
 class Medico(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
@@ -711,6 +716,7 @@ def create():
         return redirect(url_for('index'))
     medicos = [{'id': m.id, 'nome': m.nome, 'crm': m.crm, 'cor': m.cor} for m in Medico.query.order_by(Medico.nome).all()]
     procedimentos = [{'id': p.id, 'nome': p.nome, 'cid': p.cid} for p in Procedimento.query.order_by(Procedimento.nome).all()]
+    selected_date = request.args.get('date', '')
     if request.method == 'POST':
         nome_medico = request.form['nome_medico'].strip()
         submitted_crm = request.form['crm_medico'].strip()
@@ -747,7 +753,7 @@ def create():
         agendamento.numero_procedimento = build_numero_procedimento(agendamento.id)
         db.session.commit()
         return redirect(url_for('index'))
-    return render_template('edit.html', agendamento=None, medicos=medicos, procedimentos=procedimentos)
+    return render_template('edit.html', agendamento=None, medicos=medicos, procedimentos=procedimentos, selected_date=selected_date)
 
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
 def edit(id):

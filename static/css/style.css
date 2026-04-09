@@ -425,6 +425,35 @@ main {
     font-size: 1rem;
 }
 
+.day-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.day-add-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 77, 64, 0.28);
+    background: rgba(0, 77, 64, 0.08);
+    color: #004d40;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 0.95rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.day-add-btn:hover {
+    background: rgba(0, 77, 64, 0.16);
+    border-color: rgba(0, 77, 64, 0.45);
+}
+
 .appointments-list {
     overflow-y: auto;
     max-height: 130px;
@@ -437,6 +466,12 @@ main {
     margin: 0.4rem 0;
     padding: 0.5rem;
     border-radius: 4px;
+}
+
+.appointment-patient-done {
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
+    text-decoration-color: rgba(0, 77, 64, 0.75);
 }
 
 .reminder-soon {
