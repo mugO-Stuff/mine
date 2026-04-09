@@ -35,6 +35,7 @@
             {% if current_user.cargo == 'admin' or current_user.grau == 3 %}
                 <a href="{{ url_for('admin') }}">Admin</a>
             {% endif %}
+          <a href="{{ url_for('chat') }}">Chat</a>
             <a href="{{ url_for('pacientes') }}">Pacientes</a>
             <a href="{{ url_for('perfil') }}">Perfil</a>
             <a href="{{ url_for('logout') }}">Sair</a>

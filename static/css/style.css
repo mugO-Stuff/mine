@@ -1504,6 +1504,68 @@ button:hover {
     }
 }
 
+@media (min-width: 561px) and (max-width: 1024px) {
+    main {
+        padding: 1rem 1.2rem 1.6rem;
+    }
+
+    .header-nav {
+        justify-content: center;
+    }
+
+    .month-nav {
+        gap: 0.6rem;
+    }
+
+    .view-options {
+        flex-wrap: wrap;
+    }
+
+    .filter-form {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.65rem;
+        align-items: end;
+    }
+
+    .filter-form select,
+    .filter-form input {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .calendar {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.6rem;
+    }
+
+    .calendar .day {
+        width: 100%;
+        margin: 0;
+        min-width: 0;
+        min-height: 165px;
+        max-height: 230px;
+        padding: 0.6rem;
+    }
+
+    .appointments-list {
+        max-height: 120px;
+    }
+
+    .admin-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.7rem;
+    }
+}
+
+@media (min-width: 821px) and (max-width: 1024px) {
+    .calendar {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
 @media (max-width: 560px) {
     .header-nav {
         justify-content: center;
@@ -1813,6 +1875,86 @@ button:hover {
     margin: 0.2rem 0 0.25rem;
     display: inline-block;
     max-width: 100%;
+}
+
+.chat-page {
+    max-width: 960px;
+    margin: 0 auto;
+    display: grid;
+    gap: 0.9rem;
+}
+
+.chat-header h2 {
+    margin: 0;
+}
+
+.chat-header p {
+    margin: 0.35rem 0 0;
+    color: #00695c;
+}
+
+.chat-messages {
+    background: #ffffff;
+    border: 1px solid #b2dfdb;
+    border-radius: 10px;
+    min-height: 380px;
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 0.8rem;
+    display: grid;
+    gap: 0.55rem;
+}
+
+.chat-message {
+    background: #eef7f4;
+    border: 1px solid #d8ece6;
+    border-radius: 8px;
+    padding: 0.55rem 0.65rem;
+}
+
+.chat-message.mine {
+    background: #d7eee9;
+    border-color: #b7ddd4;
+}
+
+.chat-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.7rem;
+    margin-bottom: 0.2rem;
+}
+
+.chat-meta span {
+    font-size: 0.78rem;
+    color: #607d78;
+}
+
+.chat-message p {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.chat-form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.55rem;
+}
+
+.chat-form input {
+    margin: 0;
+}
+
+.chat-form button {
+    margin: 0;
+    white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+    .chat-form {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* ── Anestesistas: botão nav na tela principal ─────────────────────────────── */

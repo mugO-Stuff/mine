@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="chat-page">
+    <div class="chat-header">
+        <h2>Chat Interno</h2>
+        <p>Mensagens visíveis apenas para usuários logados. Histórico de até 30 dias.</p>
+    </div>
+
+    <div id="chat-messages" class="chat-messages" aria-live="polite"></div>
+
+    <form id="chat-form" class="chat-form" autocomplete="off">
+        <input type="text" id="chat-input" maxlength="1500" placeholder="Digite sua mensagem..." required>
+        <button type="submit">Enviar</button>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var listEl = document.getElementById('chat-messages');
+    var formEl = document.getElementById('chat-form');
+    var inputEl = document.getElementById('chat-input');
+    var lastId = 0;
+
+    function escapeHtml(raw) {
+        return (raw || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function shouldStickToBottom() {
+        var threshold = 60;
+        return (listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight) < threshold;
+    }
+
+    function renderMessage(msg) {
+        var item = document.createElement('div');
+        item.className = 'chat-message' + (msg.is_me ? ' mine' : '');
+        item.setAttribute('data-id', String(msg.id));
+
+        item.innerHTML =
+            '<div class="chat-meta">' +
+                '<strong>' + escapeHtml(msg.sender_nome) + '</strong>' +
+                '<span>' + escapeHtml(msg.created_at) + '</span>' +
+            '</div>' +
+            '<p>' + escapeHtml(msg.content) + '</p>';
+
+        listEl.appendChild(item);
+        if (msg.id > lastId) {
+            lastId = msg.id;
+        }
+    }
+
+    function fetchMessages() {
+        var stick = shouldStickToBottom();
+        fetch('/api/chat/messages?after_id=' + encodeURIComponent(lastId))
+            .then(function(resp) { return resp.json(); })
+            .then(function(data) {
+                if (!data.ok || !Array.isArray(data.messages)) return;
+                data.messages.forEach(renderMessage);
+                if (stick) {
+                    listEl.scrollTop = listEl.scrollHeight;
+                }
+            })
+            .catch(function() {
+                // silencioso
+            });
+    }
+
+    formEl.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var content = (inputEl.value || '').trim();
+        if (!content) return;
+
+        fetch('/api/chat/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: content })
+        })
+        .then(function(resp) { return resp.json(); })
+        .then(function(data) {
+            if (!data.ok || !data.message) return;
+            inputEl.value = '';
+            renderMessage(data.message);
+            listEl.scrollTop = listEl.scrollHeight;
+        })
+        .catch(function() {
+            // silencioso
+        });
+    });
+
+    fetchMessages();
+    setInterval(fetchMessages, 4000);
+});
+</script>
+{% endblock %}

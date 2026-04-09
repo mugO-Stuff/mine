@@ -139,6 +139,13 @@ class PushReminderLog(db.Model):
     reminder_date = db.Column(db.Date, nullable=False, index=True)
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)
 
+class ChatMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    sender = db.relationship('User', backref='chat_messages', lazy='joined')
+
 @app.context_processor
 def inject_user():
     current_user = None
@@ -343,6 +350,11 @@ def save_comprovante_pdf(uploaded_file):
     uploaded_file.save(abs_path)
 
     return rel_path.replace('\\', '/')
+
+def cleanup_old_chat_messages():
+    cutoff = datetime.utcnow() - timedelta(days=30)
+    ChatMessage.query.filter(ChatMessage.created_at < cutoff).delete(synchronize_session=False)
+    db.session.commit()
 
 def build_push_payload(reminder_date, appointments):
     qtd = len(appointments)
@@ -630,6 +642,72 @@ def register():
 def logout():
     session.pop('user_id', None)
     return redirect(url_for('index'))
+
+@app.route('/chat')
+def chat():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    cleanup_old_chat_messages()
+    return render_template('chat.html')
+
+@app.route('/api/chat/messages')
+def chat_messages():
+    if 'user_id' not in session:
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    cleanup_old_chat_messages()
+
+    after_id = request.args.get('after_id', 0, type=int)
+    query = ChatMessage.query.order_by(ChatMessage.id.asc())
+    if after_id:
+        query = query.filter(ChatMessage.id > after_id)
+
+    messages = query.limit(250).all()
+    payload = []
+    for msg in messages:
+        payload.append({
+            'id': msg.id,
+            'sender_id': msg.sender_id,
+            'sender_nome': msg.sender.nome if msg.sender else 'Usuário',
+            'content': msg.content,
+            'created_at': msg.created_at.strftime('%d/%m/%Y %H:%M') if msg.created_at else '',
+            'is_me': msg.sender_id == session.get('user_id'),
+        })
+
+    return jsonify({'ok': True, 'messages': payload})
+
+@app.route('/api/chat/send', methods=['POST'])
+def chat_send():
+    if 'user_id' not in session:
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    payload = request.get_json(silent=True) or {}
+    content = (payload.get('content') or '').strip()
+    if not content:
+        return jsonify({'ok': False, 'error': 'Mensagem vazia.'}), 400
+
+    content = content[:1500]
+    cleanup_old_chat_messages()
+
+    message = ChatMessage(
+        sender_id=session['user_id'],
+        content=content,
+    )
+    db.session.add(message)
+    db.session.commit()
+
+    return jsonify({
+        'ok': True,
+        'message': {
+            'id': message.id,
+            'sender_id': message.sender_id,
+            'sender_nome': message.sender.nome if message.sender else 'Usuário',
+            'content': message.content,
+            'created_at': message.created_at.strftime('%d/%m/%Y %H:%M') if message.created_at else '',
+            'is_me': True,
+        }
+    })
 
 @app.route('/perfil', methods=['GET', 'POST'])
 def perfil():
