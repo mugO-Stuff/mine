@@ -5,6 +5,7 @@
     <div class="chat-header">
         <h2>Chat Interno</h2>
         <p>Mensagens visíveis apenas para usuários logados. Histórico de até 30 dias.</p>
+        <p id="chat-notice" class="chat-notice" style="display:none;">Você recebeu novas mensagens.</p>
     </div>
 
     <div id="chat-messages" class="chat-messages" aria-live="polite"></div>
@@ -20,7 +21,9 @@ document.addEventListener('DOMContentLoaded', function() {
     var listEl = document.getElementById('chat-messages');
     var formEl = document.getElementById('chat-form');
     var inputEl = document.getElementById('chat-input');
+    var noticeEl = document.getElementById('chat-notice');
     var lastId = 0;
+    var firstLoadDone = false;
 
     function escapeHtml(raw) {
         return (raw || '')
@@ -60,9 +63,28 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(function(resp) { return resp.json(); })
             .then(function(data) {
                 if (!data.ok || !Array.isArray(data.messages)) return;
+                var hasIncoming = false;
                 data.messages.forEach(renderMessage);
+                if (firstLoadDone) {
+                    hasIncoming = data.messages.some(function(msg) { return !msg.is_me; });
+                }
                 if (stick) {
                     listEl.scrollTop = listEl.scrollHeight;
+                }
+
+                if (hasIncoming) {
+                    noticeEl.style.display = '';
+                    if ('Notification' in window) {
+                        if (Notification.permission === 'granted') {
+                            new Notification('Nova mensagem no chat');
+                        } else if (Notification.permission === 'default') {
+                            Notification.requestPermission();
+                        }
+                    }
+                }
+
+                if (!firstLoadDone) {
+                    firstLoadDone = true;
                 }
             })
             .catch(function() {
@@ -84,6 +106,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(function(data) {
             if (!data.ok || !data.message) return;
             inputEl.value = '';
+            noticeEl.style.display = 'none';
             renderMessage(data.message);
             listEl.scrollTop = listEl.scrollHeight;
         })

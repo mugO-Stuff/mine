@@ -37,6 +37,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'
 import os
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///agendadia.db')
+app.permanent_session_lifetime = timedelta(days=30)
 db = SQLAlchemy(app)
 ASSET_VERSION = os.environ.get('ASSET_VERSION', datetime.utcnow().strftime('%Y%m%d%H%M%S'))
 
@@ -164,6 +165,11 @@ def inject_user():
     if 'user_id' in session:
         current_user = User.query.get(session['user_id'])
     return dict(current_user=current_user, asset_version=ASSET_VERSION)
+
+@app.before_request
+def keep_session_persistent():
+    if 'user_id' in session:
+        session.permanent = True
 
 def normalize_month(year, month):
     while month < 1:
@@ -386,6 +392,23 @@ def cleanup_old_chat_messages():
     cutoff = datetime.utcnow() - timedelta(days=30)
     ChatMessage.query.filter(ChatMessage.created_at < cutoff).delete(synchronize_session=False)
     db.session.commit()
+
+def notify_chat_message(message):
+    sender_name = message.sender.nome if message.sender else 'Usuário'
+    payload = {
+        'title': 'Nova mensagem no chat',
+        'body': f"{sender_name}: {message.content[:120]}",
+        'url': url_for('chat', _external=True),
+        'icon': url_for('static', filename='icons/icon-192x192.png', _external=True),
+        'badge': url_for('static', filename='icons/icon-32x32.png', _external=True),
+    }
+
+    subscriptions = PushSubscription.query.filter(PushSubscription.user_id != message.sender_id).all()
+    for sub in subscriptions:
+        ok, error = send_push_to_subscription(sub, payload)
+        if not ok:
+            sub.ultimo_erro = (error or '')[:255]
+            db.session.commit()
 
 def build_push_payload(reminder_date, appointments):
     qtd = len(appointments)
@@ -644,6 +667,7 @@ def login():
         user = User.query.filter_by(nome=nome, senha=senha).first()
         if user and user.status == 'approved':
             session['user_id'] = user.id
+            session.permanent = True
             return redirect(url_for('index'))
         else:
             flash('Credenciais inválidas ou conta não aprovada')
@@ -727,6 +751,7 @@ def chat_send():
     )
     db.session.add(message)
     db.session.commit()
+    notify_chat_message(message)
 
     return jsonify({
         'ok': True,

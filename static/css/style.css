@@ -1893,6 +1893,18 @@ button:hover {
     color: #00695c;
 }
 
+.chat-notice {
+    display: inline-block;
+    margin-top: 0.5rem;
+    background: #fff8e1;
+    border: 1px solid #ffd54f;
+    color: #6d4c00;
+    border-radius: 999px;
+    padding: 0.18rem 0.65rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
 .chat-messages {
     background: #ffffff;
     border: 1px solid #b2dfdb;
