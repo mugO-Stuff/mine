@@ -938,10 +938,12 @@ def delete_user(user_id):
     flash(f'Usuário {target_user.nome} excluído com sucesso.')
     return redirect(url_for('admin'))
 
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-        # Ensure new Medico color column exists in older databases
+with app.app_context():
+    db.create_all()
+    # As linhas abaixo são específicas para SQLite e PRAGMA, não funcionam no PostgreSQL
+    # Por isso, só execute se ainda usar SQLite
+    if app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite'):
+        from sqlalchemy import text
         with db.engine.connect() as conn:
             result = conn.execute(text("PRAGMA table_info('user')")).fetchall()
             columns = [row[1] for row in result]
