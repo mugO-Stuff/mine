@@ -2,12 +2,21 @@
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func, text
+from sqlalchemy import func, text, UniqueConstraint
 from datetime import datetime, date, timedelta
 from collections import Counter
 import calendar
 import os
+import json
 from werkzeug.utils import secure_filename
+
+try:
+    from pywebpush import webpush, WebPushException
+except Exception:
+    webpush = None
+
+    class WebPushException(Exception):
+        pass
 
 PT_BR_MONTH_NAMES = {
     1: 'Janeiro',
@@ -35,6 +44,10 @@ UPLOAD_COMPROVANTES_FOLDER = os.path.join('uploads', 'comprovantes')
 DEFAULT_ADMIN_NAME = os.environ.get('DEFAULT_ADMIN_NAME', 'Gestão')
 DEFAULT_ADMIN_PASSWORD = os.environ.get('DEFAULT_ADMIN_PASSWORD', '13092026')
 DEFAULT_ADMIN_CARGO = os.environ.get('DEFAULT_ADMIN_CARGO', 'admin')
+VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
+VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
+VAPID_CLAIMS_SUB = os.environ.get('VAPID_CLAIMS_SUB', 'mailto:admin@agendadia.local')
+PUSH_DISPATCH_TOKEN = os.environ.get('PUSH_DISPATCH_TOKEN', '')
 
 # Models
 class User(db.Model):
@@ -103,6 +116,26 @@ class Comprovante(db.Model):
     meio_pagamento = db.Column(db.String(50), nullable=False)
     arquivo_comprovante = db.Column(db.String(255))
     status = db.Column(db.String(20), default='pendente')
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+
+class PushSubscription(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    endpoint = db.Column(db.String(512), unique=True, nullable=False)
+    p256dh = db.Column(db.String(512), nullable=False)
+    auth = db.Column(db.String(512), nullable=False)
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+    atualizado_em = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    ultimo_erro = db.Column(db.String(255))
+
+class PushReminderLog(db.Model):
+    __table_args__ = (
+        UniqueConstraint('subscription_id', 'reminder_date', name='uq_push_reminder_per_day'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    subscription_id = db.Column(db.Integer, db.ForeignKey('push_subscription.id'), nullable=False, index=True)
+    reminder_date = db.Column(db.Date, nullable=False, index=True)
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)
 
 @app.context_processor
@@ -308,6 +341,86 @@ def save_comprovante_pdf(uploaded_file):
 
     return rel_path.replace('\\', '/')
 
+def build_push_payload(reminder_date, appointments):
+    qtd = len(appointments)
+    if qtd == 1:
+        first = appointments[0]
+        body = f"1 agendamento para {reminder_date.strftime('%d/%m/%Y')}: {first.hora.strftime('%H:%M')} - {first.nome_paciente}."
+    else:
+        body = f"{qtd} agendamentos para {reminder_date.strftime('%d/%m/%Y')}."
+
+    return {
+        'title': 'Lembrete de agendamento',
+        'body': body,
+        'url': url_for('index', _external=True),
+        'icon': url_for('static', filename='icons/icon-192x192.png', _external=True),
+        'badge': url_for('static', filename='icons/icon-32x32.png', _external=True),
+    }
+
+def send_push_to_subscription(subscription, payload):
+    if not webpush or not VAPID_PUBLIC_KEY or not VAPID_PRIVATE_KEY:
+        return False, 'webpush indisponível ou VAPID não configurado'
+
+    subscription_info = {
+        'endpoint': subscription.endpoint,
+        'keys': {
+            'p256dh': subscription.p256dh,
+            'auth': subscription.auth,
+        },
+    }
+
+    try:
+        webpush(
+            subscription_info=subscription_info,
+            data=json.dumps(payload, ensure_ascii=False),
+            vapid_private_key=VAPID_PRIVATE_KEY,
+            vapid_claims={'sub': VAPID_CLAIMS_SUB},
+        )
+        return True, None
+    except WebPushException as exc:
+        status_code = getattr(getattr(exc, 'response', None), 'status_code', None)
+        if status_code in (404, 410):
+            db.session.delete(subscription)
+            db.session.commit()
+            return False, 'subscription expirada'
+        return False, str(exc)
+    except Exception as exc:
+        return False, str(exc)
+
+def dispatch_daily_push_reminders(target_date=None):
+    if target_date is None:
+        target_date = date.today() + timedelta(days=2)
+
+    appointments = Agendamento.query.filter_by(data=target_date).order_by(Agendamento.hora).all()
+    if not appointments:
+        return {'sent': 0, 'skipped': 0, 'date': target_date.strftime('%Y-%m-%d'), 'reason': 'sem agendamentos'}
+
+    payload = build_push_payload(target_date, appointments)
+    sent = 0
+    skipped = 0
+
+    subscriptions = PushSubscription.query.all()
+    for sub in subscriptions:
+        already_sent = PushReminderLog.query.filter_by(
+            subscription_id=sub.id,
+            reminder_date=target_date,
+        ).first()
+        if already_sent:
+            skipped += 1
+            continue
+
+        ok, error = send_push_to_subscription(sub, payload)
+        if ok:
+            db.session.add(PushReminderLog(subscription_id=sub.id, reminder_date=target_date))
+            db.session.commit()
+            sent += 1
+        else:
+            sub.ultimo_erro = (error or '')[:255]
+            db.session.commit()
+            skipped += 1
+
+    return {'sent': sent, 'skipped': skipped, 'date': target_date.strftime('%Y-%m-%d')}
+
 @app.route('/')
 def index():
     today = date.today()
@@ -372,6 +485,10 @@ def index():
         EscalaAnestesista.data < date(next_year, next_month, 1),
     ).all()
     anestesista_por_dia = {e.data: e.nome for e in escalas_mes}
+
+    # Dispara lembrete push D-2 com deduplicação por inscrição/dia.
+    if session.get('user_id'):
+        dispatch_daily_push_reminders()
     
     return render_template(
         'index.html',
@@ -395,6 +512,71 @@ def index():
         anestesista_por_dia=anestesista_por_dia,
         feriados_por_dia=feriados_por_dia,
     )
+
+@app.route('/api/push/public-key', methods=['GET'])
+def push_public_key():
+    if 'user_id' not in session:
+        return jsonify({'error': 'nao_autenticado'}), 401
+    if not VAPID_PUBLIC_KEY:
+        return jsonify({'error': 'vapid_nao_configurado'}), 503
+    return jsonify({'publicKey': VAPID_PUBLIC_KEY})
+
+@app.route('/api/push/subscribe', methods=['POST'])
+def push_subscribe():
+    if 'user_id' not in session:
+        return jsonify({'error': 'nao_autenticado'}), 401
+
+    payload = request.get_json(silent=True) or {}
+    endpoint = (payload.get('endpoint') or '').strip()
+    keys = payload.get('keys') or {}
+    p256dh = (keys.get('p256dh') or '').strip()
+    auth = (keys.get('auth') or '').strip()
+
+    if not endpoint or not p256dh or not auth:
+        return jsonify({'error': 'assinatura_invalida'}), 400
+
+    sub = PushSubscription.query.filter_by(endpoint=endpoint).first()
+    if not sub:
+        sub = PushSubscription(
+            user_id=session['user_id'],
+            endpoint=endpoint,
+            p256dh=p256dh,
+            auth=auth,
+        )
+        db.session.add(sub)
+    else:
+        sub.user_id = session['user_id']
+        sub.p256dh = p256dh
+        sub.auth = auth
+        sub.ultimo_erro = None
+
+    db.session.commit()
+    return jsonify({'ok': True})
+
+@app.route('/api/push/unsubscribe', methods=['POST'])
+def push_unsubscribe():
+    if 'user_id' not in session:
+        return jsonify({'error': 'nao_autenticado'}), 401
+
+    payload = request.get_json(silent=True) or {}
+    endpoint = (payload.get('endpoint') or '').strip()
+    if not endpoint:
+        return jsonify({'ok': True})
+
+    sub = PushSubscription.query.filter_by(endpoint=endpoint).first()
+    if sub:
+        db.session.delete(sub)
+        db.session.commit()
+    return jsonify({'ok': True})
+
+@app.route('/api/push/dispatch', methods=['POST'])
+def push_dispatch():
+    token = request.headers.get('X-Dispatch-Token', '')
+    if not PUSH_DISPATCH_TOKEN or token != PUSH_DISPATCH_TOKEN:
+        return jsonify({'error': 'nao_autorizado'}), 401
+
+    result = dispatch_daily_push_reminders()
+    return jsonify(result)
 
 @app.route('/service-worker.js')
 def service_worker():
