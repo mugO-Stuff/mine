@@ -15,6 +15,9 @@
     <p><strong>Protocolo:</strong> {{ agendamento.protocolo or '-' }}</p>
 
     <form method="post">
+        <label for="protocolo">Protocolo:</label>
+        <input type="text" id="protocolo" name="protocolo" value="{{ agendamento.protocolo or '' }}">
+
         <label for="sala_cirurgica">Sala Cirúrgica:</label>
         <input type="text" id="sala_cirurgica" name="sala_cirurgica" value="{{ agendamento.sala_cirurgica or '' }}" required>
 

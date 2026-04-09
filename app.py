@@ -177,6 +177,23 @@ def build_numero_procedimento(agendamento_id):
     # Simple globally-unique number derived from agendamento ID.
     return f"P{agendamento_id:06d}"
 
+def protocolo_conflita_com_outro_paciente(protocolo, nome_paciente, exclude_agendamento_id=None):
+    protocolo_limpo = (protocolo or '').strip().upper()
+    if not protocolo_limpo:
+        return False
+
+    query = Agendamento.query.filter(func.lower(Agendamento.protocolo) == protocolo_limpo.lower())
+    if exclude_agendamento_id is not None:
+        query = query.filter(Agendamento.id != exclude_agendamento_id)
+
+    conflito = query.first()
+    if not conflito:
+        return False
+
+    paciente_atual = (nome_paciente or '').strip().lower()
+    paciente_conflito = (conflito.nome_paciente or '').strip().lower()
+    return paciente_atual != paciente_conflito
+
 def preencher_numero_procedimento_faltante():
     agendamentos_sem_numero = Agendamento.query.filter(
         Agendamento.numero_procedimento.is_(None)
@@ -861,6 +878,12 @@ def internacao(id):
         return redirect(url_for('index'))
     agendamento = Agendamento.query.get_or_404(id)
     if request.method == 'POST':
+        protocolo_informado = request.form.get('protocolo', '').strip().upper() or None
+        if protocolo_conflita_com_outro_paciente(protocolo_informado, agendamento.nome_paciente, exclude_agendamento_id=agendamento.id):
+            flash('Protocolo já cadastrado para outro paciente.')
+            return render_template('internacao.html', agendamento=agendamento)
+
+        agendamento.protocolo = protocolo_informado
         agendamento.sala_cirurgica = request.form.get('sala_cirurgica', '').strip() or None
         agendamento.quarto = request.form.get('quarto', '').strip() or None
         db.session.commit()
@@ -891,7 +914,12 @@ def paciente(id):
         action = request.form.get('action')
 
         if action == 'protocolo':
-            agendamento.protocolo = request.form.get('protocolo', '').strip() or None
+            protocolo_informado = request.form.get('protocolo', '').strip().upper() or None
+            if protocolo_conflita_com_outro_paciente(protocolo_informado, agendamento.nome_paciente, exclude_agendamento_id=agendamento.id):
+                flash('Protocolo já cadastrado para outro paciente.')
+                return redirect(url_for('paciente', id=agendamento.id))
+
+            agendamento.protocolo = protocolo_informado
             db.session.commit()
             flash('Protocolo atualizado com sucesso.')
             return redirect(url_for('paciente', id=agendamento.id))
