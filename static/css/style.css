@@ -931,9 +931,11 @@ main {
     }
 }
 
-form {
-    max-width: 400px;
-    margin: 0 auto;
+@media (min-width: 561px) {
+    form {
+        max-width: 600px;
+        margin: 0 auto;
+    }
 }
 
 label {

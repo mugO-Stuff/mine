@@ -1,8 +1,13 @@
-const CACHE_NAME = 'agendadia-v1';
+const CACHE_NAME = 'agendadia-v3';
 const STATIC_ASSETS = [
   '/',
+  '/manifest.webmanifest',
+  '/favicon.ico',
   '/static/css/style.css',
   '/static/js/script.js',
+  '/static/icons/icon-16x16.png',
+  '/static/icons/icon-32x32.png',
+  '/static/icons/icon-180x180.png',
   '/static/icons/icon-192x192.png',
   '/static/icons/icon-512x512.png'
   // Adicione outros arquivos estáticos importantes aqui
@@ -31,6 +36,22 @@ self.addEventListener('fetch', event => {
   const { request } = event;
   // Só cacheia GET e arquivos estáticos
   if (request.method !== 'GET') return;
+
+  const requestPath = new URL(request.url).pathname;
+
+  if (requestPath === '/static/css/style.css') {
+    // Network first para CSS: evita ficar preso em estilo antigo após deploy.
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
 
   if (request.url.includes('/static/')) {
     // Cache first para arquivos estáticos

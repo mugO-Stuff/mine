@@ -29,6 +29,7 @@ app.config['SECRET_KEY'] = 'your_secret_key_here'
 import os
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://agendadia_db_user:ayunq0emDTv9B92NwdW5dWGdWFEChBjr@dpg-d7bgb5n5r7bs73dndj9g-a/agendadia_db')
 db = SQLAlchemy(app)
+ASSET_VERSION = os.environ.get('ASSET_VERSION', datetime.utcnow().strftime('%Y%m%d%H%M%S'))
 
 UPLOAD_COMPROVANTES_FOLDER = os.path.join('uploads', 'comprovantes')
 DEFAULT_ADMIN_NAME = os.environ.get('DEFAULT_ADMIN_NAME', 'Gestão')
@@ -98,7 +99,7 @@ def inject_user():
     current_user = None
     if 'user_id' in session:
         current_user = User.query.get(session['user_id'])
-    return dict(current_user=current_user)
+    return dict(current_user=current_user, asset_version=ASSET_VERSION)
 
 def normalize_month(year, month):
     while month < 1:
