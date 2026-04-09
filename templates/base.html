@@ -29,6 +29,7 @@
     <header>
         <h1>AGENDAMENTOS</h1>
         <nav class="header-nav">
+      <button type="button" class="header-back-link" onclick="goToPreviousPage()">Voltar</button>
       <a class="header-home-link" href="{{ url_for('index') }}">Agendamentos</a>
         {% if current_user %}
             {% if current_user.cargo == 'admin' or current_user.grau == 3 %}
@@ -47,6 +48,14 @@
     </main>
     <!-- Antes do fechamento do </body> -->
     <script>
+      function goToPreviousPage() {
+        if (window.history.length > 1) {
+          window.history.back();
+          return;
+        }
+        window.location.href = '{{ url_for("index") }}';
+      }
+
       function urlBase64ToUint8Array(base64String) {
         const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
         const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');

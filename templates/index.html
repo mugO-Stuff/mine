@@ -223,6 +223,7 @@
                         {% endif %}
                         <tr class="{% if appt.esta_concluido %}appointment-row-done {% endif %}{% if reminder_status.get(appt.id) %}{{ reminder_status.get(appt.id) }}{% endif %}">
                             <td>
+                                <span class="list-index-badge">#{{ loop.index }}</span>
                                 <span class="date-full">{{ appt.data.strftime('%d/%m/%Y') }}</span>
                                 <span class="date-day-only">{{ appt.data.day }}</span>
                             </td>

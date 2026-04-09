@@ -268,6 +268,21 @@ header h1 {
     background-color: rgba(255, 255, 255, 0.22);
 }
 
+.header-back-link {
+    display: inline-block;
+    padding: 0.45rem 0.85rem;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 999px;
+    background-color: rgba(255, 255, 255, 0.08);
+    color: white;
+    cursor: pointer;
+    font: inherit;
+}
+
+.header-back-link:hover {
+    background-color: rgba(255, 255, 255, 0.18);
+}
+
 header a {
     color: white;
     text-decoration: none;
@@ -714,6 +729,19 @@ main {
 .date-day-only,
 .patient-name-short {
     display: none;
+}
+
+.list-index-badge {
+    display: inline-block;
+    min-width: 2.2rem;
+    margin-right: 0.45rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    background-color: #e0f2f1;
+    color: #00574b;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-align: center;
 }
 
 .mobile-toggle,
