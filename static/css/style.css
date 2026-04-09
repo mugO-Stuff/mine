@@ -1285,6 +1285,26 @@ button:hover,
     gap: 1rem;
 }
 
+.medico-search-wrapper {
+    margin-bottom: 0.75rem;
+}
+
+.medico-search-input {
+    width: 100%;
+    max-width: 360px;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.medico-search-input:focus {
+    border-color: #004d40;
+    box-shadow: 0 0 0 2px rgba(0,77,64,0.12);
+}
+
 #medicos label[for="nome_medico"] {
     width: 200px;
 }

@@ -101,9 +101,12 @@
             <button type="submit">Salvar Médico</button>
         </form>
         {% if medicos %}
-            <ul class="list-summary">
+            <div class="medico-search-wrapper">
+                <input type="text" id="medico-search" class="medico-search-input" placeholder="Pesquisar por nome ou CRM..." autocomplete="off">
+            </div>
+            <ul class="list-summary" id="medico-list">
                 {% for medico in medicos %}
-                    <li>
+                    <li data-nome="{{ medico.nome | lower }}" data-crm="{{ medico.crm }}">
                         <span style="background-color: {{ medico.cor }}; color: white; padding: 2px 4px; border-radius: 3px;">{{ medico.nome }}</span> - CRM {{ medico.crm }}
                         <div class="button-group">
                             <a class="action-link" href="{{ url_for('edit_medico', medico_id=medico.id) }}">Editar</a>
@@ -112,7 +115,27 @@
                     </li>
                 {% endfor %}
             </ul>
+            <p id="medico-no-results" style="display:none; color:#888; margin-top:0.5rem;">Nenhum médico encontrado.</p>
         {% endif %}
+        <script>
+        (function() {
+            var input = document.getElementById('medico-search');
+            if (!input) return;
+            input.addEventListener('input', function() {
+                var q = this.value.trim().toLowerCase();
+                var items = document.querySelectorAll('#medico-list li');
+                var visible = 0;
+                items.forEach(function(li) {
+                    var nome = li.dataset.nome || '';
+                    var crm  = li.dataset.crm  || '';
+                    var show = !q || nome.includes(q) || crm.includes(q);
+                    li.style.display = show ? '' : 'none';
+                    if (show) visible++;
+                });
+                document.getElementById('medico-no-results').style.display = visible === 0 ? '' : 'none';
+            });
+        })();
+        </script>
     </section>
 
     <section id="procedimentos">
