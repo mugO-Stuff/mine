@@ -3,96 +3,120 @@
 {% block content %}
 <div class="page-header patient-header">
     <div>
-        <h2>Informações de Pagamento</h2>
-        <p class="patient-subtitle">{{ agendamento.nome_paciente }} | ID {{ agendamento.id }} | Nº Procedimento {{ agendamento.numero_procedimento or '-' }}</p>
+        <h2>Dados Base do Paciente</h2>
+        <p class="patient-subtitle">{{ agendamento.nome_paciente }} | {{ total_agendamentos }} agendamento(s)</p>
     </div>
     <div class="patient-header-actions">
         <a class="secondary-btn" href="{{ url_for('index') }}">Voltar para Agendamentos</a>
         {% if can_manage %}
-            <a class="secondary-btn" href="{{ url_for('internacao', id=agendamento.id) }}">Internação</a>
+            <a class="secondary-btn" href="{{ url_for('internacao', id=ultimo_agendamento.id) }}">Internação</a>
         {% endif %}
     </div>
 </div>
 
-<div class="patient-grid">
+<div class="patient-grid patient-grid-single">
     <section class="patient-card">
-        <h3>Resumo do Agendamento</h3>
+        <h3>Dados Base</h3>
         <div class="patient-details-grid">
             <div>
-                <span class="detail-label">ID do Agendamento</span>
-                <strong>#{{ agendamento.id }}</strong>
+                <span class="detail-label">Paciente</span>
+                <strong>{{ agendamento.nome_paciente }}</strong>
             </div>
             <div>
-                <span class="detail-label">Número do Procedimento</span>
-                <strong>{{ agendamento.numero_procedimento or '-' }}</strong>
+                <span class="detail-label">Total de Agendamentos</span>
+                <strong>{{ total_agendamentos }}</strong>
             </div>
             <div>
                 <span class="detail-label">Protocolo</span>
-                <strong>{{ agendamento.protocolo or '-' }}</strong>
+                <strong>{{ protocolo_paciente or '-' }}</strong>
             </div>
             <div>
-                <span class="detail-label">Médico</span>
-                <strong>{{ agendamento.nome_medico }}</strong>
-            </div>
-            <div>
-                <span class="detail-label">CRM</span>
-                <strong>{{ agendamento.crm_medico }}</strong>
-            </div>
-            <div>
-                <span class="detail-label">Procedimento</span>
-                <strong>{{ agendamento.procedimento }}</strong>
-            </div>
-            <div>
-                <span class="detail-label">Data da Cirurgia</span>
-                <strong>{{ agendamento.data.strftime('%d/%m/%Y') }} às {{ agendamento.hora.strftime('%H:%M') }}</strong>
-            </div>
-            <div>
-                <span class="detail-label">Sala Cirúrgica</span>
-                <strong>{{ agendamento.sala_cirurgica or '-' }}</strong>
-            </div>
-            <div>
-                <span class="detail-label">Quarto</span>
-                <strong>{{ agendamento.quarto or '-' }}</strong>
+                <span class="detail-label">WhatsApp</span>
+                <strong>{{ whatsapp_paciente or '-' }}</strong>
             </div>
         </div>
+
         <div class="patient-observation">
-            <span class="detail-label">Observação</span>
-            <p>{{ agendamento.observacao or 'Sem observações cadastradas.' }}</p>
+            <span class="detail-label">Último Agendamento</span>
+            <div class="patient-details-grid">
+                <div>
+                    <span class="detail-label">ID do Agendamento</span>
+                    <strong>#{{ ultimo_agendamento.id }}</strong>
+                </div>
+                <div>
+                    <span class="detail-label">Número do Procedimento</span>
+                    <strong>{{ ultimo_agendamento.numero_procedimento or '-' }}</strong>
+                </div>
+                <div>
+                    <span class="detail-label">Médico</span>
+                    <strong>{{ ultimo_agendamento.nome_medico }}</strong>
+                </div>
+                <div>
+                    <span class="detail-label">CRM</span>
+                    <strong>{{ ultimo_agendamento.crm_medico }}</strong>
+                </div>
+                <div>
+                    <span class="detail-label">Procedimento</span>
+                    <strong>{{ ultimo_agendamento.procedimento }}</strong>
+                </div>
+                <div>
+                    <span class="detail-label">Data da Cirurgia</span>
+                    <strong>{{ ultimo_agendamento.data.strftime('%d/%m/%Y') }} às {{ ultimo_agendamento.hora.strftime('%H:%M') }}</strong>
+                </div>
+                <div>
+                    <span class="detail-label">Sala Cirúrgica</span>
+                    <strong>{{ ultimo_agendamento.sala_cirurgica or '-' }}</strong>
+                </div>
+                <div>
+                    <span class="detail-label">Quarto</span>
+                    <strong>{{ ultimo_agendamento.quarto or '-' }}</strong>
+                </div>
+            </div>
+            <div class="patient-observation patient-last-observation">
+                <span class="detail-label">Observação</span>
+                <p>{{ ultimo_agendamento.observacao or 'Sem observações cadastradas.' }}</p>
+            </div>
         </div>
 
         {% if can_manage %}
         <form method="post" class="patient-form protocol-form">
             <input type="hidden" name="action" value="protocolo">
             <label for="protocolo">Protocolo</label>
-            <input type="text" id="protocolo" name="protocolo" value="{{ agendamento.protocolo or '' }}" placeholder="Preencha manualmente o protocolo">
+            <input type="text" id="protocolo" name="protocolo" value="{{ protocolo_paciente or '' }}" placeholder="Preencha manualmente o protocolo">
             <button type="submit">Salvar Protocolo</button>
         </form>
-        {% endif %}
-    </section>
 
-    {% if can_access_pagamentos %}
-        <section class="patient-card">
-            <div class="section-heading">
-                <h3>Comprovantes</h3>
+        <form method="post" class="patient-form protocol-form">
+            <input type="hidden" name="action" value="whatsapp">
+            <label for="whatsapp_paciente">WhatsApp do Paciente</label>
+            <input type="text" id="whatsapp_paciente" name="whatsapp_paciente" value="{{ whatsapp_paciente or '' }}" placeholder="Ex.: 11999999999">
+            <button type="submit">Salvar WhatsApp</button>
+        </form>
+        {% endif %}
+
+        {% if can_access_pagamentos %}
+        <details class="patient-payments-toggle">
+            <summary>
+                <span>Pagamentos e Comprovantes</span>
                 <span class="summary-pill">{{ comprovantes|length }} registro(s)</span>
-            </div>
+            </summary>
 
             {% if can_manage %}
             <form method="post" class="patient-form" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="comprovante">
                 <label for="numero_procedimento">Número do Procedimento</label>
                 <div class="procedure-lookup-row">
-                    <input type="text" id="numero_procedimento" name="numero_procedimento" value="{{ agendamento.numero_procedimento or '' }}" placeholder="Ex.: P000123" required>
+                    <input type="text" id="numero_procedimento" name="numero_procedimento" value="{{ ultimo_agendamento.numero_procedimento or '' }}" placeholder="Ex.: P000123" required>
                     <button type="button" id="buscar_procedimento">Buscar</button>
                 </div>
                 <label for="nome_medico">Nome do Médico</label>
-                <input type="text" id="nome_medico" name="nome_medico" value="{{ agendamento.nome_medico }}" required>
+                <input type="text" id="nome_medico" name="nome_medico" value="{{ ultimo_agendamento.nome_medico }}" required>
 
                 <label for="procedimento">Procedimento</label>
-                <input type="text" id="procedimento" name="procedimento" value="{{ agendamento.procedimento }}" required>
+                <input type="text" id="procedimento" name="procedimento" value="{{ ultimo_agendamento.procedimento }}" required>
 
                 <label for="data_cirurgia">Data da Cirurgia</label>
-                <input type="date" id="data_cirurgia" name="data_cirurgia" value="{{ agendamento.data.strftime('%Y-%m-%d') }}" required>
+                <input type="date" id="data_cirurgia" name="data_cirurgia" value="{{ ultimo_agendamento.data.strftime('%Y-%m-%d') }}" required>
 
                 <label for="valor">Valor</label>
                 <input type="text" id="valor" name="valor" placeholder="Ex.: 1500,00" required>
@@ -169,8 +193,9 @@
             {% else %}
                 <p class="empty-state">Nenhum comprovante registrado para este paciente.</p>
             {% endif %}
-        </section>
-    {% endif %}
+        </details>
+        {% endif %}
+    </section>
 </div>
 
 {% with messages = get_flashed_messages() %}

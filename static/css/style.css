@@ -786,6 +786,11 @@ main {
     gap: 1.5rem;
 }
 
+.patient-grid-single {
+    grid-template-columns: minmax(320px, 920px);
+    justify-content: center;
+}
+
 .patient-card {
     background-color: #daf3ef;
     border-radius: 12px;
@@ -842,6 +847,32 @@ main {
 .patient-form {
     max-width: 100%;
     margin: 0 0 1.25rem;
+}
+
+.patient-payments-toggle {
+    margin-top: 1rem;
+    border-top: 1px solid #b7ddd7;
+    padding-top: 1rem;
+}
+
+.patient-payments-toggle summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    cursor: pointer;
+    list-style: none;
+    font-weight: 700;
+    color: #004d40;
+    margin-bottom: 1rem;
+}
+
+.patient-payments-toggle summary::-webkit-details-marker {
+    display: none;
+}
+
+.patient-last-observation {
+    margin-top: 0.8rem;
 }
 
 .patient-form select,

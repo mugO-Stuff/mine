@@ -70,6 +70,7 @@ class Agendamento(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     numero_procedimento = db.Column(db.String(40), unique=True, index=True)
     nome_paciente = db.Column(db.String(100), nullable=False)
+    whatsapp_paciente = db.Column(db.String(30))
     nome_medico = db.Column(db.String(100), nullable=False)
     crm_medico = db.Column(db.Integer, nullable=False)
     procedimento = db.Column(db.String(100), nullable=False)
@@ -274,6 +275,8 @@ def ensure_sqlite_legacy_columns():
         columns = [row[1] for row in result]
         if 'numero_procedimento' not in columns:
             conn.execute(text("ALTER TABLE agendamento ADD COLUMN numero_procedimento VARCHAR(40)"))
+        if 'whatsapp_paciente' not in columns:
+            conn.execute(text("ALTER TABLE agendamento ADD COLUMN whatsapp_paciente VARCHAR(30)"))
         if 'sala_cirurgica' not in columns:
             conn.execute(text("ALTER TABLE agendamento ADD COLUMN sala_cirurgica VARCHAR(50)"))
         if 'quarto' not in columns:
@@ -1084,6 +1087,13 @@ def paciente(id):
         return redirect(url_for('login'))
 
     agendamento = Agendamento.query.get_or_404(id)
+    nome_paciente_base = (agendamento.nome_paciente or '').strip()
+    agendamentos_paciente = Agendamento.query.filter(
+        func.lower(Agendamento.nome_paciente) == nome_paciente_base.lower()
+    ).order_by(Agendamento.data.desc(), Agendamento.hora.desc(), Agendamento.id.desc()).all()
+    ultimo_agendamento = agendamentos_paciente[0] if agendamentos_paciente else agendamento
+    protocolo_paciente = next((item.protocolo for item in agendamentos_paciente if item.protocolo), None)
+    whatsapp_paciente = next((item.whatsapp_paciente for item in agendamentos_paciente if item.whatsapp_paciente), None)
 
     can_manage = user_can_manage_agendamentos(user)
     can_access_pagamentos = user_can_access_pagamentos(user)
@@ -1101,9 +1111,18 @@ def paciente(id):
                 flash('Protocolo já cadastrado para outro paciente.')
                 return redirect(url_for('paciente', id=agendamento.id))
 
-            agendamento.protocolo = protocolo_informado
+            for item in agendamentos_paciente:
+                item.protocolo = protocolo_informado
             db.session.commit()
-            flash('Protocolo atualizado com sucesso.')
+            flash('Protocolo atualizado com sucesso para este paciente.')
+            return redirect(url_for('paciente', id=agendamento.id))
+
+        if action == 'whatsapp':
+            whatsapp_informado = request.form.get('whatsapp_paciente', '').strip() or None
+            for item in agendamentos_paciente:
+                item.whatsapp_paciente = whatsapp_informado
+            db.session.commit()
+            flash('WhatsApp do paciente atualizado com sucesso.')
             return redirect(url_for('paciente', id=agendamento.id))
 
         if action != 'comprovante':
@@ -1185,10 +1204,18 @@ def paciente(id):
         flash('Pagamento da cirurgia vinculado com sucesso.')
         return redirect(url_for('paciente', id=agendamento_pagamento.id))
 
-    comprovantes = Comprovante.query.filter_by(agendamento_id=agendamento.id).order_by(Comprovante.criado_em.desc()).all()
+    agendamento_ids = [item.id for item in agendamentos_paciente]
+    comprovantes = Comprovante.query.filter(
+        Comprovante.agendamento_id.in_(agendamento_ids)
+    ).order_by(Comprovante.data_cirurgia.desc(), Comprovante.criado_em.desc()).all()
+
     return render_template(
         'paciente.html',
         agendamento=agendamento,
+        ultimo_agendamento=ultimo_agendamento,
+        total_agendamentos=len(agendamentos_paciente),
+        protocolo_paciente=protocolo_paciente,
+        whatsapp_paciente=whatsapp_paciente,
         comprovantes=comprovantes,
         can_manage=can_manage,
         can_access_pagamentos=can_access_pagamentos,
