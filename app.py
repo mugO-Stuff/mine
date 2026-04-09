@@ -1,3 +1,5 @@
+# Forçando novo deploy no Render em 09/04/2026
+
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func, text
@@ -959,20 +961,18 @@ if __name__ == '__main__':
                 result = conn.execute(text("PRAGMA table_info('agendamento')")).fetchall()
                 columns = [row[1] for row in result]
                 if 'numero_procedimento' not in columns:
-                    pass  # continue seu código aqui se necessário
-        app.run()
-                conn.execute(text("ALTER TABLE agendamento ADD COLUMN numero_procedimento VARCHAR(40)"))
-            if 'sala_cirurgica' not in columns:
-                conn.execute(text("ALTER TABLE agendamento ADD COLUMN sala_cirurgica VARCHAR(50)"))
-            if 'quarto' not in columns:
-                conn.execute(text("ALTER TABLE agendamento ADD COLUMN quarto VARCHAR(50)"))
-            if 'protocolo' not in columns:
-                conn.execute(text("ALTER TABLE agendamento ADD COLUMN protocolo VARCHAR(50)"))
-        with db.engine.connect() as conn:
-            result = conn.execute(text("PRAGMA table_info('comprovante')")).fetchall()
-            columns = [row[1] for row in result]
-            if 'arquivo_comprovante' not in columns:
-                conn.execute(text("ALTER TABLE comprovante ADD COLUMN arquivo_comprovante VARCHAR(255)"))
+                    conn.execute(text("ALTER TABLE agendamento ADD COLUMN numero_procedimento VARCHAR(40)"))
+                if 'sala_cirurgica' not in columns:
+                    conn.execute(text("ALTER TABLE agendamento ADD COLUMN sala_cirurgica VARCHAR(50)"))
+                if 'quarto' not in columns:
+                    conn.execute(text("ALTER TABLE agendamento ADD COLUMN quarto VARCHAR(50)"))
+                if 'protocolo' not in columns:
+                    conn.execute(text("ALTER TABLE agendamento ADD COLUMN protocolo VARCHAR(50)"))
+            with db.engine.connect() as conn:
+                result = conn.execute(text("PRAGMA table_info('comprovante')")).fetchall()
+                columns = [row[1] for row in result]
+                if 'arquivo_comprovante' not in columns:
+                    conn.execute(text("ALTER TABLE comprovante ADD COLUMN arquivo_comprovante VARCHAR(255)"))
 
         normalizar_numero_procedimento()
 
