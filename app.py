@@ -31,6 +31,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgres
 db = SQLAlchemy(app)
 
 UPLOAD_COMPROVANTES_FOLDER = os.path.join('uploads', 'comprovantes')
+DEFAULT_ADMIN_NAME = os.environ.get('DEFAULT_ADMIN_NAME', 'Gestão')
+DEFAULT_ADMIN_PASSWORD = os.environ.get('DEFAULT_ADMIN_PASSWORD', '13092026')
+DEFAULT_ADMIN_CARGO = os.environ.get('DEFAULT_ADMIN_CARGO', 'admin')
 
 # Models
 class User(db.Model):
@@ -152,6 +155,76 @@ def normalizar_numero_procedimento():
     if alterados:
         db.session.commit()
     return alterados
+
+def ensure_sqlite_legacy_columns():
+    if not app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite'):
+        return
+
+    with db.engine.connect() as conn:
+        result = conn.execute(text("PRAGMA table_info('user')")).fetchall()
+        columns = [row[1] for row in result]
+        if 'grau' not in columns:
+            conn.execute(text("ALTER TABLE user ADD COLUMN grau INTEGER DEFAULT 1"))
+
+    with db.engine.connect() as conn:
+        result = conn.execute(text("PRAGMA table_info('medico')")).fetchall()
+        columns = [row[1] for row in result]
+        if 'cor' not in columns:
+            conn.execute(text("ALTER TABLE medico ADD COLUMN cor VARCHAR(7) DEFAULT '#004d40'"))
+
+    with db.engine.connect() as conn:
+        result = conn.execute(text("PRAGMA table_info('agendamento')")).fetchall()
+        columns = [row[1] for row in result]
+        if 'numero_procedimento' not in columns:
+            conn.execute(text("ALTER TABLE agendamento ADD COLUMN numero_procedimento VARCHAR(40)"))
+        if 'sala_cirurgica' not in columns:
+            conn.execute(text("ALTER TABLE agendamento ADD COLUMN sala_cirurgica VARCHAR(50)"))
+        if 'quarto' not in columns:
+            conn.execute(text("ALTER TABLE agendamento ADD COLUMN quarto VARCHAR(50)"))
+        if 'protocolo' not in columns:
+            conn.execute(text("ALTER TABLE agendamento ADD COLUMN protocolo VARCHAR(50)"))
+
+    with db.engine.connect() as conn:
+        result = conn.execute(text("PRAGMA table_info('comprovante')")).fetchall()
+        columns = [row[1] for row in result]
+        if 'arquivo_comprovante' not in columns:
+            conn.execute(text("ALTER TABLE comprovante ADD COLUMN arquivo_comprovante VARCHAR(255)"))
+
+def ensure_admin_user(update_password=False):
+    admin = User.query.filter_by(nome=DEFAULT_ADMIN_NAME).order_by(User.id).first()
+    if not admin:
+        admin = User.query.filter_by(cargo='admin', grau=3).order_by(User.id).first()
+
+    created = admin is None
+    if created:
+        admin = User(
+            nome=DEFAULT_ADMIN_NAME,
+            cargo=DEFAULT_ADMIN_CARGO,
+            senha=DEFAULT_ADMIN_PASSWORD,
+            status='approved',
+            grau=3,
+        )
+        db.session.add(admin)
+    else:
+        admin.cargo = DEFAULT_ADMIN_CARGO
+        admin.status = 'approved'
+        admin.grau = 3
+        if update_password:
+            admin.senha = DEFAULT_ADMIN_PASSWORD
+
+    db.session.commit()
+    return admin, created
+
+def ensure_database_ready(create_default_admin=True, update_admin_password=False):
+    db.create_all()
+    ensure_sqlite_legacy_columns()
+    normalizar_numero_procedimento()
+    os.makedirs(os.path.join(app.static_folder, UPLOAD_COMPROVANTES_FOLDER), exist_ok=True)
+
+    if create_default_admin:
+        return ensure_admin_user(update_password=update_admin_password)
+
+    return None, False
 
 def save_comprovante_pdf(uploaded_file):
     filename = secure_filename(uploaded_file.filename or '')
@@ -940,47 +1013,8 @@ def delete_user(user_id):
     flash(f'Usuário {target_user.nome} excluído com sucesso.')
     return redirect(url_for('admin'))
 
+with app.app_context():
+    ensure_database_ready()
+
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-        # As linhas abaixo são específicas para SQLite e PRAGMA, não funcionam no PostgreSQL
-        # Por isso, só execute se ainda usar SQLite
-        if app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite'):
-            from sqlalchemy import text
-            with db.engine.connect() as conn:
-                result = conn.execute(text("PRAGMA table_info('user')")).fetchall()
-                columns = [row[1] for row in result]
-                if 'grau' not in columns:
-                    conn.execute(text("ALTER TABLE user ADD COLUMN grau INTEGER DEFAULT 1"))
-            with db.engine.connect() as conn:
-                result = conn.execute(text("PRAGMA table_info('medico')")).fetchall()
-                columns = [row[1] for row in result]
-                if 'cor' not in columns:
-                    conn.execute(text("ALTER TABLE medico ADD COLUMN cor VARCHAR(7) DEFAULT '#004d40'"))
-            with db.engine.connect() as conn:
-                result = conn.execute(text("PRAGMA table_info('agendamento')")).fetchall()
-                columns = [row[1] for row in result]
-                if 'numero_procedimento' not in columns:
-                    conn.execute(text("ALTER TABLE agendamento ADD COLUMN numero_procedimento VARCHAR(40)"))
-                if 'sala_cirurgica' not in columns:
-                    conn.execute(text("ALTER TABLE agendamento ADD COLUMN sala_cirurgica VARCHAR(50)"))
-                if 'quarto' not in columns:
-                    conn.execute(text("ALTER TABLE agendamento ADD COLUMN quarto VARCHAR(50)"))
-                if 'protocolo' not in columns:
-                    conn.execute(text("ALTER TABLE agendamento ADD COLUMN protocolo VARCHAR(50)"))
-            with db.engine.connect() as conn:
-                result = conn.execute(text("PRAGMA table_info('comprovante')")).fetchall()
-                columns = [row[1] for row in result]
-                if 'arquivo_comprovante' not in columns:
-                    conn.execute(text("ALTER TABLE comprovante ADD COLUMN arquivo_comprovante VARCHAR(255)"))
-
-        normalizar_numero_procedimento()
-
-        os.makedirs(os.path.join(app.static_folder, UPLOAD_COMPROVANTES_FOLDER), exist_ok=True)
-        # Create default admin if not exists
-        admin = User.query.filter_by(nome='Gestão', cargo='admin').order_by(User.id).first()
-        if not admin:
-            admin = User(nome='Gestão', cargo='admin', senha='13092026', status='approved', grau=3)
-            db.session.add(admin)
-            db.session.commit()
     app.run(host="0.0.0.0", port=5000, debug=True)

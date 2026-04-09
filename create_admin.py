@@ -1,19 +1,10 @@
-from app import app, db, User
+from app import app, ensure_database_ready
 
 print("Iniciando criação do admin...")
 
 with app.app_context():
-    admin = User.query.filter_by(nome='Gestão').first()
-    if not admin:
-        admin = User(
-            nome='Gestão',
-            cargo='Gerencia',
-            senha='13092026',  # senha em texto puro, igual ao sistema atual
-            status='approved',
-            grau=3
-        )
-        db.session.add(admin)
-        db.session.commit()
+    admin, created = ensure_database_ready(create_default_admin=True, update_admin_password=True)
+    if created:
         print('Usuário admin criado com sucesso!')
     else:
-        print('Usuário admin já existe.')
+        print('Usuário admin encontrado e atualizado com sucesso!')
