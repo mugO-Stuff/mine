@@ -1,12 +1,19 @@
 {
   "name": "AgendaDia",
   "short_name": "Agenda",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#1976d2",
   "theme_color": "#1976d2",
   "description": "AgendaDia - Gerencie seus compromissos de forma simples e eficiente.",
   "icons": [
+    {
+      "src": "/static/icons/icon-180x180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
     {
       "src": "/static/icons/icon-192x192.png",
       "sizes": "192x192",

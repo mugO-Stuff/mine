@@ -1,6 +1,6 @@
 # Forçando novo deploy no Render em 09/04/2026
 
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func, text
 from datetime import datetime, date, timedelta
@@ -318,6 +318,18 @@ def index():
         reminder_status=reminder_status,
         today=today,
     )
+
+@app.route('/service-worker.js')
+def service_worker():
+    return send_from_directory(app.static_folder, 'service-worker.js', mimetype='application/javascript')
+
+@app.route('/manifest.webmanifest')
+def web_manifest():
+    return send_from_directory(app.static_folder, 'manifest.json', mimetype='application/manifest+json')
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(app.static_folder, 'favicon.ico', mimetype='image/x-icon')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
