@@ -938,26 +938,29 @@ def delete_user(user_id):
     flash(f'Usuário {target_user.nome} excluído com sucesso.')
     return redirect(url_for('admin'))
 
-with app.app_context():
-    db.create_all()
-    # As linhas abaixo são específicas para SQLite e PRAGMA, não funcionam no PostgreSQL
-    # Por isso, só execute se ainda usar SQLite
-    if app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite'):
-        from sqlalchemy import text
-        with db.engine.connect() as conn:
-            result = conn.execute(text("PRAGMA table_info('user')")).fetchall()
-            columns = [row[1] for row in result]
-            if 'grau' not in columns:
-                conn.execute(text("ALTER TABLE user ADD COLUMN grau INTEGER DEFAULT 1"))
-        with db.engine.connect() as conn:
-            result = conn.execute(text("PRAGMA table_info('medico')")).fetchall()
-            columns = [row[1] for row in result]
-            if 'cor' not in columns:
-                conn.execute(text("ALTER TABLE medico ADD COLUMN cor VARCHAR(7) DEFAULT '#004d40'"))
-        with db.engine.connect() as conn:
-            result = conn.execute(text("PRAGMA table_info('agendamento')")).fetchall()
-            columns = [row[1] for row in result]
-            if 'numero_procedimento' not in columns:
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+        # As linhas abaixo são específicas para SQLite e PRAGMA, não funcionam no PostgreSQL
+        # Por isso, só execute se ainda usar SQLite
+        if app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite'):
+            from sqlalchemy import text
+            with db.engine.connect() as conn:
+                result = conn.execute(text("PRAGMA table_info('user')")).fetchall()
+                columns = [row[1] for row in result]
+                if 'grau' not in columns:
+                    conn.execute(text("ALTER TABLE user ADD COLUMN grau INTEGER DEFAULT 1"))
+            with db.engine.connect() as conn:
+                result = conn.execute(text("PRAGMA table_info('medico')")).fetchall()
+                columns = [row[1] for row in result]
+                if 'cor' not in columns:
+                    conn.execute(text("ALTER TABLE medico ADD COLUMN cor VARCHAR(7) DEFAULT '#004d40'"))
+            with db.engine.connect() as conn:
+                result = conn.execute(text("PRAGMA table_info('agendamento')")).fetchall()
+                columns = [row[1] for row in result]
+                if 'numero_procedimento' not in columns:
+                    pass  # continue seu código aqui se necessário
+        app.run()
                 conn.execute(text("ALTER TABLE agendamento ADD COLUMN numero_procedimento VARCHAR(40)"))
             if 'sala_cirurgica' not in columns:
                 conn.execute(text("ALTER TABLE agendamento ADD COLUMN sala_cirurgica VARCHAR(50)"))

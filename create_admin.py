@@ -1,7 +1,8 @@
 from app import app, db, User
 
+print("Iniciando criação do admin...")
+
 with app.app_context():
-    # Verifica se já existe um usuário admin
     admin = User.query.filter_by(nome='Gestão').first()
     if not admin:
         admin = User(
