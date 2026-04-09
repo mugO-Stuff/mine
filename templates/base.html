@@ -30,12 +30,10 @@
         <h1>AGENDAMENTOS</h1>
         <nav class="header-nav">
       <button type="button" class="header-back-link" onclick="goToPreviousPage()">Voltar</button>
-      <a class="header-home-link" href="{{ url_for('index') }}">Agendamentos</a>
         {% if current_user %}
             {% if current_user.cargo == 'admin' or current_user.grau == 3 %}
                 <a href="{{ url_for('admin') }}">Admin</a>
             {% endif %}
-          <a href="{{ url_for('chat') }}">Chat</a>
           <a href="{{ url_for('enfermagem') }}">Enfermagem</a>
             <a href="{{ url_for('pacientes') }}">Pacientes</a>
             <a href="{{ url_for('perfil') }}">Perfil</a>
@@ -48,6 +46,11 @@
     <main>
         {% block content %}{% endblock %}
     </main>
+
+    {% if current_user %}
+    <a id="chat-fab" class="chat-fab" href="{{ url_for('chat') }}" aria-label="Abrir chat">Chat</a>
+    {% endif %}
+
     <!-- Antes do fechamento do </body> -->
     <script>
       function goToPreviousPage() {
@@ -57,6 +60,108 @@
         }
         window.location.href = '{{ url_for("index") }}';
       }
+
+      (function initDraggableChatFab() {
+        const fab = document.getElementById('chat-fab');
+        if (!fab) return;
+
+        const storageKey = 'chatFabPosition';
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+          try {
+            const pos = JSON.parse(saved);
+            if (typeof pos.left === 'number' && typeof pos.top === 'number') {
+              fab.style.left = pos.left + 'px';
+              fab.style.top = pos.top + 'px';
+              fab.style.right = 'auto';
+              fab.style.bottom = 'auto';
+            }
+          } catch (e) {
+            // ignore invalid storage
+          }
+        }
+
+        let dragging = false;
+        let moved = false;
+        let startX = 0;
+        let startY = 0;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        function startDrag(clientX, clientY) {
+          const rect = fab.getBoundingClientRect();
+          dragging = true;
+          moved = false;
+          startX = clientX;
+          startY = clientY;
+          offsetX = clientX - rect.left;
+          offsetY = clientY - rect.top;
+          fab.classList.add('dragging');
+        }
+
+        function onMove(clientX, clientY) {
+          if (!dragging) return;
+          if (Math.abs(clientX - startX) > 4 || Math.abs(clientY - startY) > 4) {
+            moved = true;
+          }
+
+          const maxLeft = window.innerWidth - fab.offsetWidth - 8;
+          const maxTop = window.innerHeight - fab.offsetHeight - 8;
+          let left = clientX - offsetX;
+          let top = clientY - offsetY;
+
+          left = Math.max(8, Math.min(left, maxLeft));
+          top = Math.max(8, Math.min(top, maxTop));
+
+          fab.style.left = left + 'px';
+          fab.style.top = top + 'px';
+          fab.style.right = 'auto';
+          fab.style.bottom = 'auto';
+        }
+
+        function endDrag() {
+          if (!dragging) return;
+          dragging = false;
+          fab.classList.remove('dragging');
+          const rect = fab.getBoundingClientRect();
+          localStorage.setItem(storageKey, JSON.stringify({ left: rect.left, top: rect.top }));
+        }
+
+        fab.addEventListener('mousedown', function(e) {
+          startDrag(e.clientX, e.clientY);
+        });
+
+        document.addEventListener('mousemove', function(e) {
+          onMove(e.clientX, e.clientY);
+        });
+
+        document.addEventListener('mouseup', function() {
+          endDrag();
+        });
+
+        fab.addEventListener('touchstart', function(e) {
+          if (!e.touches.length) return;
+          const t = e.touches[0];
+          startDrag(t.clientX, t.clientY);
+        }, { passive: true });
+
+        document.addEventListener('touchmove', function(e) {
+          if (!e.touches.length) return;
+          const t = e.touches[0];
+          onMove(t.clientX, t.clientY);
+        }, { passive: true });
+
+        document.addEventListener('touchend', function() {
+          endDrag();
+        });
+
+        fab.addEventListener('click', function(e) {
+          if (moved) {
+            e.preventDefault();
+            moved = false;
+          }
+        });
+      })();
 
       function urlBase64ToUint8Array(base64String) {
         const padding = '='.repeat((4 - (base64String.length % 4)) % 4);

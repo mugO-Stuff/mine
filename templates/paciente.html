@@ -7,7 +7,6 @@
         <p class="patient-subtitle">{{ agendamento.nome_paciente }} | {{ total_agendamentos }} agendamento(s)</p>
     </div>
     <div class="patient-header-actions">
-        <a class="secondary-btn" href="{{ url_for('index') }}">Voltar para Agendamentos</a>
         {% if can_manage %}
             <a class="secondary-btn" href="{{ url_for('internacao', id=ultimo_agendamento.id) }}">Internação</a>
         {% endif %}
