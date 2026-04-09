@@ -75,7 +75,7 @@
                                 {% endif %}
                                 {% if 'user_id' in session and current_user.grau in (2, 3) %}
                                     <div class="appointment-actions">
-                                        <a href="{{ url_for('internacao', id=appt.id) }}" class="internalacao-btn {% if appt.data == today and (not appt.sala_cirurgica or not appt.quarto) %}pending{% endif %}">Internação{% if appt.data == today and (not appt.sala_cirurgica or not appt.quarto) %} ?{% endif %}</a>
+                                        <a href="{{ url_for('internacao', id=appt.id) }}" class="internalacao-btn {% if appt.data <= today and (not appt.sala_cirurgica or not appt.quarto) %}pending{% endif %}">Internação{% if appt.data <= today and (not appt.sala_cirurgica or not appt.quarto) %} ?{% endif %}</a>
                                         <a href="{{ url_for('edit', id=appt.id) }}">Editar</a>
                                         <a href="{{ url_for('delete', id=appt.id) }}">Excluir</a>
                                     </div>
@@ -238,7 +238,7 @@
                             <td class="col-observacao">{{ appt.observacao or '-' }}</td>
                             {% if 'user_id' in session and current_user.grau in (2, 3) %}
                                 <td class="actions-cell">
-                                    <a href="{{ url_for('internacao', id=appt.id) }}" class="internalacao-btn {% if appt.data == today and (not appt.sala_cirurgica or not appt.quarto) %}pending{% endif %}">Internação{% if appt.data == today and (not appt.sala_cirurgica or not appt.quarto) %} ?{% endif %}</a>
+                                    <a href="{{ url_for('internacao', id=appt.id) }}" class="internalacao-btn {% if appt.data <= today and (not appt.sala_cirurgica or not appt.quarto) %}pending{% endif %}">Internação{% if appt.data <= today and (not appt.sala_cirurgica or not appt.quarto) %} ?{% endif %}</a>
                                     <a href="{{ url_for('edit', id=appt.id) }}">Editar</a>
                                     <a href="{{ url_for('delete', id=appt.id) }}">Excluir</a>
 
