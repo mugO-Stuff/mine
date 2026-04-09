@@ -121,6 +121,41 @@ def normalize_month(year, month):
         year += 1
     return year, month
 
+def calculate_easter_date(year):
+    # Anonymous Gregorian algorithm.
+    a = year % 19
+    b = year // 100
+    c = year % 100
+    d = b // 4
+    e = b % 4
+    f = (b + 8) // 25
+    g = (b - f + 1) // 3
+    h = (19 * a + b - d - g + 15) % 30
+    i = c // 4
+    k = c % 4
+    l = (32 + 2 * e + 2 * i - h - k) % 7
+    m = (a + 11 * h + 22 * l) // 451
+    month = (h + l - 7 * m + 114) // 31
+    day = ((h + l - 7 * m + 114) % 31) + 1
+    return date(year, month, day)
+
+def get_brazil_holidays(year):
+    easter = calculate_easter_date(year)
+    holidays = {
+        date(year, 1, 1): 'Confraternização Universal',
+        date(year, 4, 21): 'Tiradentes',
+        date(year, 5, 1): 'Dia do Trabalho',
+        date(year, 9, 7): 'Independência do Brasil',
+        date(year, 10, 12): 'Nossa Senhora Aparecida',
+        date(year, 11, 2): 'Finados',
+        date(year, 11, 15): 'Proclamação da República',
+        date(year, 11, 20): 'Dia da Consciência Negra',
+        date(year, 12, 25): 'Natal',
+        easter - timedelta(days=2): 'Sexta-feira Santa',
+        easter + timedelta(days=60): 'Corpus Christi',
+    }
+    return holidays
+
 def user_can_manage_agendamentos(user):
     return bool(user and (user.cargo == 'admin' or user.grau in (2, 3)))
 
@@ -264,7 +299,9 @@ def index():
     view_mode = request.args.get('view', 'calendar')
     year, month = normalize_month(year, month)
     cal = calendar.monthcalendar(year, month)
+    holidays_map = get_brazil_holidays(year)
     appointments = {}
+    feriados_por_dia = {}
     all_dates = []
     for week in cal:
         for day in week:
@@ -273,6 +310,8 @@ def index():
                 if d.weekday() < 5:
                     all_dates.append(d)
                     appointments[d] = Agendamento.query.filter_by(data=d).all()
+                    if d in holidays_map:
+                        feriados_por_dia[d] = holidays_map[d]
     next_month_year, next_month_num = normalize_month(year, month + 1)
     doctor_filter = request.args.get('medico', '').strip()
     protocol_filter = request.args.get('protocolo', '').strip()
@@ -337,6 +376,7 @@ def index():
         reminder_status=reminder_status,
         today=today,
         anestesista_por_dia=anestesista_por_dia,
+        feriados_por_dia=feriados_por_dia,
     )
 
 @app.route('/service-worker.js')

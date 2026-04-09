@@ -65,6 +65,10 @@
                 {% if anest_nome %}
                     <div class="anest-tag">💉 {{ anest_nome }}</div>
                 {% endif %}
+                {% set feriado_nome = feriados_por_dia.get(date) %}
+                {% if feriado_nome %}
+                    <div class="holiday-tag" title="{{ feriado_nome }}">Feriado</div>
+                {% endif %}
                 <div class="appointments-list">
                     {% if appts %}
                         {% for appt in appts %}
@@ -129,9 +133,9 @@
                             const observacao = appt.dataset.observacao;
                             const protocolo = appt.dataset.protocolo;
                             const numeroProcedimento = appt.dataset.numeroProcedimento;
+                            const concluido = appt.dataset.concluido === '1';
                             const item = document.createElement('div');
                             item.className = 'modal-appointment' + (concluido ? ' modal-appointment-done' : '');
-                            const concluido = appt.dataset.concluido === '1';
                             item.innerHTML = '<h4>' + hora + ' - <span class="' + (concluido ? 'appointment-patient-done' : '') + '">' + paciente + '</span></h4>' +
                                 (numeroProcedimento ? '<p><strong>Nº Procedimento:</strong> ' + numeroProcedimento + '</p>' : '') +
                                 '<p><strong>Protocolo:</strong> ' + (protocolo || '-') + '</p>' +
