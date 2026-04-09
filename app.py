@@ -251,6 +251,10 @@ def resolve_procedimento_cid(procedimento_name, submitted_cid=''):
         return procedimento_obj.cid
     return submitted_cid
 
+def redirect_to_agendamento_month(agendamento, view='calendar'):
+    target_date = agendamento.data if agendamento and agendamento.data else date.today()
+    return redirect(url_for('index', year=target_date.year, month=target_date.month, view=view))
+
 def build_numero_procedimento(agendamento_id):
     # Simple globally-unique number derived from agendamento ID.
     return f"P{agendamento_id:06d}"
@@ -1116,7 +1120,7 @@ def create():
         db.session.flush()
         agendamento.numero_procedimento = build_numero_procedimento(agendamento.id)
         db.session.commit()
-        return redirect(url_for('index'))
+        return redirect_to_agendamento_month(agendamento, view='calendar')
     return render_template('edit.html', agendamento=None, medicos=medicos, procedimentos=procedimentos, selected_date=selected_date)
 
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
@@ -1148,7 +1152,7 @@ def edit(id):
         agendamento.hora = datetime.strptime(request.form['hora'], '%H:%M').time()
         agendamento.observacao = request.form['observacao']
         db.session.commit()
-        return redirect(url_for('index'))
+        return redirect_to_agendamento_month(agendamento, view='calendar')
     return render_template('edit.html', agendamento=agendamento, medicos=medicos, procedimentos=procedimentos)
 
 @app.route('/delete/<int:id>')
@@ -1160,9 +1164,10 @@ def delete(id):
         flash('Acesso negado')
         return redirect(url_for('index'))
     agendamento = Agendamento.query.get_or_404(id)
+    target_date = agendamento.data
     db.session.delete(agendamento)
     db.session.commit()
-    return redirect(url_for('index'))
+    return redirect(url_for('index', year=target_date.year, month=target_date.month, view='calendar'))
 
 @app.route('/internacao/<int:id>', methods=['GET', 'POST'])
 def internacao(id):
@@ -1184,7 +1189,7 @@ def internacao(id):
         agendamento.quarto = request.form.get('quarto', '').strip() or None
         db.session.commit()
         flash('Dados de internação atualizados.')
-        return redirect(url_for('index'))
+        return redirect_to_agendamento_month(agendamento, view='calendar')
     return render_template('internacao.html', agendamento=agendamento)
 
 @app.route('/paciente/<int:id>', methods=['GET', 'POST'])
