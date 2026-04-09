@@ -295,51 +295,51 @@ def perfil():
     if request.method == 'POST':
         action = request.form.get('action')
 
-        if action == 'dados':
-            nome = request.form.get('nome', '').strip()
-            cargo = request.form.get('cargo', '').strip()
+        if __name__ == '__main__':
+            with app.app_context():
+                db.create_all()
+                # As linhas abaixo são específicas para SQLite e PRAGMA, não funcionam no PostgreSQL
+                # Por isso, só execute se ainda usar SQLite
+                if app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite'):
+                    from sqlalchemy import text
+                    with db.engine.connect() as conn:
+                        result = conn.execute(text("PRAGMA table_info('user')")).fetchall()
+                        columns = [row[1] for row in result]
+                        if 'grau' not in columns:
+                            conn.execute(text("ALTER TABLE user ADD COLUMN grau INTEGER DEFAULT 1"))
+                    with db.engine.connect() as conn:
+                        result = conn.execute(text("PRAGMA table_info('medico')")).fetchall()
+                        columns = [row[1] for row in result]
+                        if 'cor' not in columns:
+                            conn.execute(text("ALTER TABLE medico ADD COLUMN cor VARCHAR(7) DEFAULT '#004d40'"))
+                    with db.engine.connect() as conn:
+                        result = conn.execute(text("PRAGMA table_info('agendamento')")).fetchall()
+                        columns = [row[1] for row in result]
+                        if 'numero_procedimento' not in columns:
+                            conn.execute(text("ALTER TABLE agendamento ADD COLUMN numero_procedimento VARCHAR(40)"))
+                        if 'sala_cirurgica' not in columns:
+                            conn.execute(text("ALTER TABLE agendamento ADD COLUMN sala_cirurgica VARCHAR(50)"))
+                        if 'quarto' not in columns:
+                            conn.execute(text("ALTER TABLE agendamento ADD COLUMN quarto VARCHAR(50)"))
+                        if 'protocolo' not in columns:
+                            conn.execute(text("ALTER TABLE agendamento ADD COLUMN protocolo VARCHAR(50)"))
+                    with db.engine.connect() as conn:
+                        result = conn.execute(text("PRAGMA table_info('comprovante')")).fetchall()
+                        columns = [row[1] for row in result]
+                        if 'arquivo_comprovante' not in columns:
+                            conn.execute(text("ALTER TABLE comprovante ADD COLUMN arquivo_comprovante VARCHAR(255)"))
 
-            if not nome or not cargo:
-                flash('Nome e cargo são obrigatórios.')
-                return redirect(url_for('perfil'))
+                    normalizar_numero_procedimento()
 
-            existing_user = User.query.filter(User.nome == nome, User.id != user.id).first()
-            if existing_user:
-                flash('Já existe outro usuário com este nome.')
-                return redirect(url_for('perfil'))
-
-            user.nome = nome
-            user.cargo = cargo
-            db.session.commit()
-            flash('Dados do perfil atualizados com sucesso.')
-            return redirect(url_for('perfil'))
-
-        if action == 'senha':
-            senha_atual = request.form.get('senha_atual', '')
-            nova_senha = request.form.get('nova_senha', '')
-            confirmar_senha = request.form.get('confirmar_senha', '')
-
-            if senha_atual != user.senha:
-                flash('Senha atual incorreta.')
-                return redirect(url_for('perfil'))
-
-            if len(nova_senha) < 6 or not nova_senha.isdigit():
-                flash('A nova senha deve ter pelo menos 6 dígitos numéricos.')
-                return redirect(url_for('perfil'))
-
-            if nova_senha != confirmar_senha:
-                flash('A confirmação da senha não confere.')
-                return redirect(url_for('perfil'))
-
-            user.senha = nova_senha
-            db.session.commit()
-            flash('Senha alterada com sucesso.')
-            return redirect(url_for('perfil'))
-
-        flash('Ação inválida.')
-        return redirect(url_for('perfil'))
-
-    return render_template('perfil.html', user=user, managed_by_admin=False)
+                    import os
+                    os.makedirs(os.path.join(app.static_folder, UPLOAD_COMPROVANTES_FOLDER), exist_ok=True)
+                    # Create default admin if not exists
+                    admin = User.query.filter_by(nome='Gestão', cargo='admin').order_by(User.id).first()
+                    if not admin:
+                        admin = User(nome='Gestão', cargo='admin', senha='13092026', status='approved', grau=3)
+                        db.session.add(admin)
+                        db.session.commit()
+                app.run(host="0.0.0.0", port=5000, debug=True)
 
 @app.route('/admin/perfil_usuario/<int:user_id>', methods=['GET', 'POST'])
 def perfil_usuario(user_id):
