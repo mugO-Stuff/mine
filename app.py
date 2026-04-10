@@ -1139,6 +1139,7 @@ def create():
 
         agendamento = Agendamento(
             nome_paciente=request.form['nome_paciente'],
+            whatsapp_paciente=request.form.get('whatsapp_paciente', '').strip() or None,
             nome_medico=nome_medico,
             crm_medico=crm_medico,
             procedimento=procedimento_name,
@@ -1175,6 +1176,7 @@ def edit(id):
         cid_val = resolve_procedimento_cid(procedimento_name, submitted_cid)
 
         agendamento.nome_paciente = request.form['nome_paciente']
+        agendamento.whatsapp_paciente = request.form.get('whatsapp_paciente', '').strip() or None
         agendamento.nome_medico = nome_medico
         agendamento.crm_medico = crm_medico
         agendamento.procedimento = procedimento_name
@@ -1289,7 +1291,7 @@ def paciente(id):
             for item in agendamentos_paciente:
                 item.whatsapp_paciente = whatsapp_informado
             db.session.commit()
-            flash('WhatsApp do paciente atualizado com sucesso.')
+            flash('Telefone do paciente atualizado com sucesso.')
             return redirect(url_for('paciente', id=agendamento.id))
 
         if action != 'comprovante':

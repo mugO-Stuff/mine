@@ -30,7 +30,7 @@
                 <strong>{{ protocolo_paciente or '-' }}</strong>
             </div>
             <div>
-                <span class="detail-label">WhatsApp</span>
+                <span class="detail-label">Telefone</span>
                 <strong>{{ whatsapp_paciente or '-' }}</strong>
             </div>
         </div>
@@ -87,9 +87,9 @@
 
         <form method="post" class="patient-form protocol-form">
             <input type="hidden" name="action" value="whatsapp">
-            <label for="whatsapp_paciente">WhatsApp do Paciente</label>
+            <label for="whatsapp_paciente">Telefone do Paciente</label>
             <input type="text" id="whatsapp_paciente" name="whatsapp_paciente" value="{{ whatsapp_paciente or '' }}" placeholder="Ex.: 11999999999">
-            <button type="submit">Salvar WhatsApp</button>
+            <button type="submit">Salvar Telefone</button>
         </form>
         {% endif %}
 

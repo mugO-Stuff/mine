@@ -109,13 +109,14 @@
                 <div class="appointments-list">
                     {% if appts %}
                         {% for appt in appts %}
-                            <div class="appointment {% if appt.cirurgia_confirmada and not appt.cirurgia_em_curso %}appointment-confirmed{% endif %} {% if appt.esta_concluido %}appointment-done{% endif %} {% if reminder_status.get(appt.id) %}{{ reminder_status.get(appt.id) }}{% endif %} {% if calendar_search and appt.id in calendar_search_match_ids %}search-match{% endif %}" data-hora="{{ appt.hora.strftime('%H:%M') }}" data-paciente="{{ appt.nome_paciente }}" data-medico="{{ appt.nome_medico }}" data-crm="{{ appt.crm_medico }}" data-procedimento="{{ appt.procedimento }}" data-cid="{{ appt.cid_procedimento }}" data-observacao="{{ appt.observacao or '-' }}" data-protocolo="{{ appt.protocolo or '' }}" data-sala-cirurgica="{{ appt.sala_cirurgica or '' }}" data-quarto="{{ appt.quarto or '' }}" data-reminder-status="{{ reminder_status.get(appt.id) or '' }}" data-cirurgia-confirmada="{{ '1' if appt.cirurgia_confirmada else '0' }}" data-concluido="{{ '1' if appt.esta_concluido else '0' }}"{% if 'user_id' in session %} data-numero-procedimento="{{ appt.numero_procedimento or '-' }}"{% endif %}{% if 'user_id' in session and current_user.grau in (2, 3) %} data-internacao-url="{{ url_for('internacao', id=appt.id) }}" data-internacao-pending="{{ '1' if not appt.sala_cirurgica or not appt.quarto else '0' }}" data-edit-url="{{ url_for('edit', id=appt.id) }}" data-delete-url="{{ url_for('delete', id=appt.id) }}"{% endif %}{% if 'user_id' in session and current_user.grau == 3 %} data-confirm-url="{{ url_for('confirmar_cirurgia', id=appt.id) }}" data-confirm-available="{{ '1' if appt.cirurgia_confirmavel else '0' }}"{% endif %}>
+                            <div class="appointment {% if appt.cirurgia_confirmada and not appt.cirurgia_em_curso %}appointment-confirmed{% endif %} {% if appt.esta_concluido %}appointment-done{% endif %} {% if reminder_status.get(appt.id) %}{{ reminder_status.get(appt.id) }}{% endif %} {% if calendar_search and appt.id in calendar_search_match_ids %}search-match{% endif %}" data-hora="{{ appt.hora.strftime('%H:%M') }}" data-paciente="{{ appt.nome_paciente }}" data-medico="{{ appt.nome_medico }}" data-crm="{{ appt.crm_medico }}" data-procedimento="{{ appt.procedimento }}" data-cid="{{ appt.cid_procedimento }}" data-observacao="{{ appt.observacao or '-' }}" data-protocolo="{{ appt.protocolo or '' }}" data-whatsapp="{{ appt.whatsapp_paciente or '' }}" data-sala-cirurgica="{{ appt.sala_cirurgica or '' }}" data-quarto="{{ appt.quarto or '' }}" data-reminder-status="{{ reminder_status.get(appt.id) or '' }}" data-cirurgia-confirmada="{{ '1' if appt.cirurgia_confirmada else '0' }}" data-concluido="{{ '1' if appt.esta_concluido else '0' }}"{% if 'user_id' in session %} data-numero-procedimento="{{ appt.numero_procedimento or '-' }}"{% endif %}{% if 'user_id' in session and current_user.grau in (2, 3) %} data-internacao-url="{{ url_for('internacao', id=appt.id) }}" data-internacao-pending="{{ '1' if not appt.sala_cirurgica or not appt.quarto else '0' }}" data-edit-url="{{ url_for('edit', id=appt.id) }}" data-delete-url="{{ url_for('delete', id=appt.id) }}"{% endif %}{% if 'user_id' in session and current_user.grau == 3 %} data-confirm-url="{{ url_for('confirmar_cirurgia', id=appt.id) }}" data-confirm-available="{{ '1' if appt.cirurgia_confirmavel else '0' }}"{% endif %}>
                                 <p>{{ appt.hora.strftime('%H:%M') }} - <span class="{% if appt.esta_concluido %}appointment-patient-done{% endif %}">{{ appt.nome_paciente }}</span></p>
                                 {% if appt.cirurgia_confirmada %}
                                     <p><strong>Cirurgia Confirmada</strong></p>
                                 {% endif %}
                                 {% if 'user_id' in session %}
                                     <p><strong>Nº Procedimento:</strong> {{ appt.numero_procedimento or '-' }}</p>
+                                    <p><strong>Telefone:</strong> {{ appt.whatsapp_paciente or '-' }}</p>
                                 {% endif %}
                                 {% if 'user_id' in session and current_user.grau in (2, 3) %}
                                     <div class="appointment-actions">
@@ -177,6 +178,7 @@
                             const cid = appt.dataset.cid;
                             const observacao = appt.dataset.observacao;
                             const protocolo = appt.dataset.protocolo;
+                            const whatsapp = appt.dataset.whatsapp;
                             const salaCirurgica = appt.dataset.salaCirurgica;
                             const quarto = appt.dataset.quarto;
                             const reminderStatus = appt.dataset.reminderStatus || '';
@@ -187,6 +189,7 @@
                             item.className = 'modal-appointment' + (concluido ? ' modal-appointment-done' : '') + (cirurgiaConfirmada ? ' appointment-confirmed' : '') + (reminderStatus ? ' ' + reminderStatus : '');
                             item.innerHTML = '<h4>' + hora + ' - <span class="' + (concluido ? 'appointment-patient-done' : '') + '">' + paciente + '</span></h4>' +
                                 (numeroProcedimento ? '<p><strong>Nº Procedimento:</strong> ' + numeroProcedimento + '</p>' : '') +
+                                (numeroProcedimento ? '<p><strong>Telefone:</strong> ' + (whatsapp || '-') + '</p>' : '') +
                                 '<p><strong>Protocolo:</strong> ' + (protocolo || '-') + '</p>' +
                                 '<p><strong>Cirurgia Confirmada:</strong> ' + (cirurgiaConfirmada ? 'Sim' : 'Não') + '</p>' +
                                 '<p><strong>Sala Cirúrgica:</strong> ' + (salaCirurgica || '-') + '</p>' +
@@ -329,6 +332,7 @@
                                     <div id="mobile-info-{{ appt.id }}" class="mobile-info-panel">
                                         <p><strong>Paciente:</strong> <span class="{% if appt.esta_concluido %}appointment-patient-done{% endif %}">{{ appt.nome_paciente }}</span></p>
                                         <p><strong>Nº Procedimento:</strong> {{ appt.numero_procedimento or '-' }}</p>
+                                        <p><strong>Telefone:</strong> {{ appt.whatsapp_paciente or '-' }}</p>
                                         <p><strong>Data:</strong> {{ appt.data.strftime('%d/%m/%Y') }}</p>
                                         <p><strong>Hora:</strong> {{ appt.hora.strftime('%H:%M') }}</p>
                                         <p><strong>Cirurgia Confirmada:</strong> {{ 'Sim' if appt.cirurgia_confirmada else 'Não' }}</p>

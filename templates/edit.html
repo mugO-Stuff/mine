@@ -9,6 +9,8 @@
     {% endif %}
     <label for="nome_paciente">Nome do Paciente:</label>
     <input type="text" id="nome_paciente" name="nome_paciente" value="{{ agendamento.nome_paciente if agendamento else '' }}" required>
+    <label for="whatsapp_paciente">Telefone do Paciente:</label>
+    <input type="text" id="whatsapp_paciente" name="whatsapp_paciente" value="{{ agendamento.whatsapp_paciente if agendamento else '' }}" placeholder="Ex.: 11999999999">
     <label for="nome_medico">Nome do Médico:</label>
     <input type="text" id="nome_medico" name="nome_medico" value="{{ agendamento.nome_medico if agendamento else '' }}" required>
     <label for="crm_medico">CRM do Médico:</label>
