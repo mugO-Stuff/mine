@@ -518,9 +518,12 @@ def index():
     next_month_year, next_month_num = normalize_month(year, month + 1)
     doctor_filter = request.args.get('medico', '').strip()
     protocol_filter = request.args.get('protocolo', '').strip()
+    calendar_search = request.args.get('paciente_busca', '').strip()
     month_start = date(year, month, 1)
     month_end = date(next_month_year, next_month_num, 1)
     all_appointments = []
+    calendar_search_results = []
+    calendar_search_match_ids = set()
     query = Agendamento.query.filter(
         Agendamento.data >= month_start,
         Agendamento.data < month_end
@@ -531,6 +534,14 @@ def index():
         if protocol_filter:
             query = query.filter(Agendamento.protocolo.contains(protocol_filter))
         all_appointments = query.all()
+
+    if view_mode == 'calendar' and calendar_search:
+        search_norm = calendar_search.lower()
+        calendar_search_results = Agendamento.query.filter(
+            (func.lower(Agendamento.nome_paciente).contains(search_norm)) |
+            (func.lower(func.coalesce(Agendamento.protocolo, '')).contains(search_norm))
+        ).order_by(Agendamento.data.desc(), Agendamento.hora.desc()).limit(200).all()
+        calendar_search_match_ids = {item.id for item in calendar_search_results}
 
     reminder_status = {}
     for appt in Agendamento.query.filter(
@@ -580,6 +591,9 @@ def index():
         medicos=medicos,
         doctor_filter=doctor_filter,
         protocol_filter=protocol_filter,
+        calendar_search=calendar_search,
+        calendar_search_results=calendar_search_results,
+        calendar_search_match_ids=calendar_search_match_ids,
         reminder_status=reminder_status,
         today=today,
         anestesista_por_dia=anestesista_por_dia,

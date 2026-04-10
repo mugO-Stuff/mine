@@ -409,6 +409,34 @@ main {
     background-color: #a0cebf;
 }
 
+.calendar-search-results {
+    background: #e9f6f3;
+    border: 1px solid #b9dfd8;
+    border-radius: 8px;
+    padding: 0.8rem;
+    margin-bottom: 1rem;
+}
+
+.calendar-search-results h3 {
+    margin: 0 0 0.55rem;
+    color: #004d40;
+}
+
+.calendar-search-results ul {
+    margin: 0;
+    padding-left: 1rem;
+    display: grid;
+    gap: 0.45rem;
+}
+
+.calendar-search-results li {
+    color: #004d40;
+}
+
+.calendar-search-results li .action-link {
+    margin-left: 0.5rem;
+}
+
 .view-btn {
     display: inline-block;
     color: white;
@@ -538,6 +566,11 @@ main {
 .reminder-immediate {
     background-color: #ffcdd2 !important;
     border: 1px solid #e57373;
+}
+
+.search-match {
+    outline: 2px solid #26a69a;
+    outline-offset: 1px;
 }
 
 .day-clickable {
