@@ -178,7 +178,11 @@ def inject_user():
     current_user = None
     if 'user_id' in session:
         current_user = User.query.get(session['user_id'])
-    return dict(current_user=current_user, asset_version=ASSET_VERSION)
+    return dict(
+        current_user=current_user,
+        asset_version=ASSET_VERSION,
+        build_comprovante_url=build_comprovante_url,
+    )
 
 @app.before_request
 def keep_session_persistent():
@@ -471,6 +475,36 @@ def save_comprovante_pdf(uploaded_file):
     uploaded_file.save(abs_path)
 
     return rel_path.replace('\\', '/')
+
+def normalize_comprovante_relpath(stored_path):
+    raw = (stored_path or '').strip().replace('\\', '/')
+    if not raw:
+        return ''
+
+    raw = raw.lstrip('/')
+    if raw.startswith('static/'):
+        raw = raw[len('static/'):]
+
+    marker = 'uploads/comprovantes/'
+    if marker in raw:
+        suffix = raw.split(marker, 1)[1].lstrip('/')
+        return f"{marker}{suffix}" if suffix else ''
+
+    if raw.startswith('comprovantes/'):
+        suffix = raw[len('comprovantes/'):].lstrip('/')
+        return f"uploads/comprovantes/{suffix}" if suffix else ''
+
+    filename_only = os.path.basename(raw)
+    if not filename_only:
+        return ''
+
+    return f"uploads/comprovantes/{filename_only}"
+
+def build_comprovante_url(stored_path):
+    normalized = normalize_comprovante_relpath(stored_path)
+    if not normalized:
+        return '#'
+    return url_for('static', filename=normalized)
 
 def cleanup_old_chat_messages():
     cutoff = datetime.utcnow() - timedelta(days=30)
