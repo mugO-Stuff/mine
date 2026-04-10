@@ -93,7 +93,16 @@ class Agendamento(db.Model):
     @property
     def cirurgia_confirmavel(self):
         dias_ate = (self.data - date.today()).days
-        return 0 <= dias_ate <= 2 and not self.cirurgia_confirmada
+        return 1 <= dias_ate <= 2 and not self.cirurgia_confirmada
+
+    @property
+    def cirurgia_em_curso(self):
+        return (
+            self.data == date.today()
+            and self.cirurgia_confirmada
+            and bool(self.sala_cirurgica and str(self.sala_cirurgica).strip())
+            and bool(self.quarto and str(self.quarto).strip())
+        )
 
 class Medico(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -557,9 +566,9 @@ def index():
         Agendamento.data < month_end
     ).all():
         days_until = (appt.data - today).days
-        if days_until == 0 and not appt.esta_concluido:
+        if appt.cirurgia_em_curso and not appt.esta_concluido:
             reminder_status[appt.id] = 'reminder-in-progress'
-        elif days_until in (1, 2):
+        elif days_until in (1, 2) and not appt.cirurgia_confirmada:
             reminder_status[appt.id] = 'reminder-immediate'
         else:
             reminder_status[appt.id] = ''
