@@ -171,7 +171,12 @@
                 <article class="comprovante-card">
                     <div class="comprovante-header">
                         <strong>{{ comprovante.procedimento }}</strong>
-                        <span class="status-badge status-{{ comprovante.status }}">{{ comprovante.status|capitalize }}</span>
+                        <div>
+                            <span class="status-badge status-{{ comprovante.status }}">{{ comprovante.status|capitalize }}</span>
+                            {% if can_access_pagamentos %}
+                                <a class="action-link" href="{{ url_for('editar_comprovante', comprovante_id=comprovante.id, year=return_context.year, month=return_context.month, view=return_context.view, medico=return_context.medico, protocolo=return_context.protocolo, paciente_busca=return_context.paciente_busca, q=return_context.q) }}">Editar</a>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="comprovante-grid">
                         <div>

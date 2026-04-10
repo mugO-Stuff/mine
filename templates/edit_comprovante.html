@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Editar Comprovante de Pagamento</h2>
+<div class="admin-form" style="max-width: 760px; margin: 0 auto;">
+    <p><strong>Paciente:</strong> {{ agendamento.nome_paciente }}</p>
+    <p><strong>Número do Procedimento:</strong> {{ agendamento.numero_procedimento or '-' }}</p>
+
+    <form method="post" enctype="multipart/form-data">
+        <input type="hidden" name="context_year" value="{{ return_context.year }}">
+        <input type="hidden" name="context_month" value="{{ return_context.month }}">
+        <input type="hidden" name="context_view" value="{{ return_context.view }}">
+        <input type="hidden" name="context_medico" value="{{ return_context.medico or '' }}">
+        <input type="hidden" name="context_protocolo" value="{{ return_context.protocolo or '' }}">
+        <input type="hidden" name="context_paciente_busca" value="{{ return_context.paciente_busca or '' }}">
+        <input type="hidden" name="context_q" value="{{ return_context.q or '' }}">
+
+        <label for="nome_medico">Nome do Médico</label>
+        <input type="text" id="nome_medico" name="nome_medico" value="{{ comprovante.nome_medico }}" required>
+
+        <label for="procedimento">Procedimento</label>
+        <input type="text" id="procedimento" name="procedimento" value="{{ comprovante.procedimento }}" required>
+
+        <label for="data_cirurgia">Data da Cirurgia</label>
+        <input type="date" id="data_cirurgia" name="data_cirurgia" value="{{ comprovante.data_cirurgia.strftime('%Y-%m-%d') }}" required>
+
+        <label for="valor">Valor</label>
+        <input type="text" id="valor" name="valor" value="{{ '%.2f'|format(comprovante.valor)|replace('.', ',') }}" required>
+
+        <label for="data_pagamento">Data do Pagamento</label>
+        <input type="date" id="data_pagamento" name="data_pagamento" value="{{ comprovante.data_pagamento.strftime('%Y-%m-%d') if comprovante.data_pagamento else '' }}">
+
+        <label for="pagante">Pagante</label>
+        <input type="text" id="pagante" name="pagante" value="{{ comprovante.pagante }}" required>
+
+        <label for="meio_pagamento">Meio de Pagamento</label>
+        <select id="meio_pagamento" name="meio_pagamento" required>
+            <option value="">Selecione</option>
+            <option value="Pix" {% if comprovante.meio_pagamento == 'Pix' %}selected{% endif %}>Pix</option>
+            <option value="Cartão de Crédito" {% if comprovante.meio_pagamento == 'Cartão de Crédito' %}selected{% endif %}>Cartão de Crédito</option>
+            <option value="Cartão de Débito" {% if comprovante.meio_pagamento == 'Cartão de Débito' %}selected{% endif %}>Cartão de Débito</option>
+            <option value="Dinheiro" {% if comprovante.meio_pagamento == 'Dinheiro' %}selected{% endif %}>Dinheiro</option>
+            <option value="Transferência" {% if comprovante.meio_pagamento == 'Transferência' %}selected{% endif %}>Transferência</option>
+            <option value="Boleto" {% if comprovante.meio_pagamento == 'Boleto' %}selected{% endif %}>Boleto</option>
+        </select>
+
+        <label for="arquivo_comprovante">Substituir Comprovante (PDF)</label>
+        <input type="file" id="arquivo_comprovante" name="arquivo_comprovante" accept=".pdf,application/pdf">
+
+        {% if comprovante.arquivo_comprovante %}
+            <p><strong>Arquivo atual:</strong> <a class="action-link" href="{{ build_comprovante_url(comprovante.arquivo_comprovante) }}" target="_blank" rel="noopener">Abrir PDF atual</a></p>
+        {% endif %}
+
+        <button type="submit">Salvar Alterações</button>
+    </form>
+</div>
+{% endblock %}

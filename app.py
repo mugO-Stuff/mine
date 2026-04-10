@@ -1491,6 +1491,77 @@ def paciente(id):
         return_context=return_context,
     )
 
+@app.route('/comprovante/editar/<int:comprovante_id>', methods=['GET', 'POST'])
+def editar_comprovante(comprovante_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if not user or not user_can_access_pagamentos(user):
+        flash('Acesso negado para editar comprovantes.')
+        return redirect(url_for('index'))
+
+    comprovante = Comprovante.query.get_or_404(comprovante_id)
+    agendamento = Agendamento.query.get_or_404(comprovante.agendamento_id)
+    return_context = build_paciente_return_params(agendamento=agendamento, source=request.args)
+
+    if request.method == 'POST':
+        nome_medico = request.form.get('nome_medico', '').strip()
+        procedimento = request.form.get('procedimento', '').strip()
+        data_cirurgia_raw = request.form.get('data_cirurgia', '').strip()
+        valor_raw = request.form.get('valor', '').strip()
+        data_pagamento_raw = request.form.get('data_pagamento', '').strip()
+        pagante = request.form.get('pagante', '').strip()
+        meio_pagamento = request.form.get('meio_pagamento', '').strip()
+        arquivo_pdf = request.files.get('arquivo_comprovante')
+
+        if not all([nome_medico, procedimento, data_cirurgia_raw, valor_raw, pagante, meio_pagamento]):
+            flash('Preencha todos os campos obrigatórios do comprovante.')
+            return render_template(
+                'edit_comprovante.html',
+                comprovante=comprovante,
+                agendamento=agendamento,
+                return_context=build_paciente_return_params(agendamento=agendamento, source=request.form),
+            )
+
+        try:
+            data_cirurgia = datetime.strptime(data_cirurgia_raw, '%Y-%m-%d').date()
+            data_pagamento = datetime.strptime(data_pagamento_raw, '%Y-%m-%d').date() if data_pagamento_raw else None
+            valor = parse_currency_value(valor_raw)
+            arquivo_comprovante = None
+            if arquivo_pdf and arquivo_pdf.filename:
+                arquivo_comprovante = save_comprovante_pdf(arquivo_pdf)
+        except ValueError:
+            flash('Revise os dados do comprovante. Valor, datas e arquivo PDF precisam estar válidos.')
+            return render_template(
+                'edit_comprovante.html',
+                comprovante=comprovante,
+                agendamento=agendamento,
+                return_context=build_paciente_return_params(agendamento=agendamento, source=request.form),
+            )
+
+        comprovante.nome_medico = nome_medico
+        comprovante.procedimento = procedimento
+        comprovante.data_cirurgia = data_cirurgia
+        comprovante.valor = valor
+        comprovante.data_pagamento = data_pagamento
+        comprovante.pagante = pagante
+        comprovante.meio_pagamento = meio_pagamento
+        comprovante.status = 'pago' if data_pagamento else 'pendente'
+        if arquivo_comprovante:
+            comprovante.arquivo_comprovante = arquivo_comprovante
+
+        db.session.commit()
+        flash('Comprovante atualizado com sucesso.')
+        return redirect(url_for('paciente', id=agendamento.id, **build_paciente_return_params(agendamento=agendamento, source=request.form)))
+
+    return render_template(
+        'edit_comprovante.html',
+        comprovante=comprovante,
+        agendamento=agendamento,
+        return_context=return_context,
+    )
+
 @app.route('/api/agendamento-por-procedimento')
 def api_agendamento_por_procedimento():
     if 'user_id' not in session:
