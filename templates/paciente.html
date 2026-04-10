@@ -8,7 +8,7 @@
     </div>
     <div class="patient-header-actions">
         {% if can_manage %}
-            <a class="secondary-btn" href="{{ url_for('internacao', id=ultimo_agendamento.id) }}">Internação</a>
+            <a class="secondary-btn" href="{{ url_for('internacao', id=ultimo_agendamento.id, year=return_context.year, month=return_context.month, view=return_context.view, medico=return_context.medico, protocolo=return_context.protocolo, paciente_busca=return_context.paciente_busca) }}">Internação</a>
         {% endif %}
     </div>
 </div>
@@ -80,6 +80,13 @@
         {% if can_manage %}
         <form method="post" class="patient-form protocol-form">
             <input type="hidden" name="action" value="protocolo">
+            <input type="hidden" name="context_year" value="{{ return_context.year }}">
+            <input type="hidden" name="context_month" value="{{ return_context.month }}">
+            <input type="hidden" name="context_view" value="{{ return_context.view }}">
+            <input type="hidden" name="context_medico" value="{{ return_context.medico or '' }}">
+            <input type="hidden" name="context_protocolo" value="{{ return_context.protocolo or '' }}">
+            <input type="hidden" name="context_paciente_busca" value="{{ return_context.paciente_busca or '' }}">
+            <input type="hidden" name="context_q" value="{{ return_context.q or '' }}">
             <label for="protocolo">Protocolo</label>
             <input type="text" id="protocolo" name="protocolo" value="{{ protocolo_paciente or '' }}" placeholder="Preencha manualmente o protocolo">
             <button type="submit">Salvar Protocolo</button>
@@ -87,6 +94,13 @@
 
         <form method="post" class="patient-form protocol-form">
             <input type="hidden" name="action" value="whatsapp">
+            <input type="hidden" name="context_year" value="{{ return_context.year }}">
+            <input type="hidden" name="context_month" value="{{ return_context.month }}">
+            <input type="hidden" name="context_view" value="{{ return_context.view }}">
+            <input type="hidden" name="context_medico" value="{{ return_context.medico or '' }}">
+            <input type="hidden" name="context_protocolo" value="{{ return_context.protocolo or '' }}">
+            <input type="hidden" name="context_paciente_busca" value="{{ return_context.paciente_busca or '' }}">
+            <input type="hidden" name="context_q" value="{{ return_context.q or '' }}">
             <label for="whatsapp_paciente">Telefone do Paciente</label>
             <input type="text" id="whatsapp_paciente" name="whatsapp_paciente" value="{{ whatsapp_paciente or '' }}" placeholder="Ex.: 11999999999">
             <button type="submit">Salvar Telefone</button>
@@ -103,6 +117,13 @@
             {% if can_manage %}
             <form method="post" class="patient-form" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="comprovante">
+                <input type="hidden" name="context_year" value="{{ return_context.year }}">
+                <input type="hidden" name="context_month" value="{{ return_context.month }}">
+                <input type="hidden" name="context_view" value="{{ return_context.view }}">
+                <input type="hidden" name="context_medico" value="{{ return_context.medico or '' }}">
+                <input type="hidden" name="context_protocolo" value="{{ return_context.protocolo or '' }}">
+                <input type="hidden" name="context_paciente_busca" value="{{ return_context.paciente_busca or '' }}">
+                <input type="hidden" name="context_q" value="{{ return_context.q or '' }}">
                 <label for="numero_procedimento">Número do Procedimento</label>
                 <div class="procedure-lookup-row">
                     <input type="text" id="numero_procedimento" name="numero_procedimento" value="{{ ultimo_agendamento.numero_procedimento or '' }}" placeholder="Ex.: P000123" required>

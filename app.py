@@ -265,9 +265,73 @@ def resolve_procedimento_cid(procedimento_name, submitted_cid=''):
         return procedimento_obj.cid
     return submitted_cid
 
-def redirect_to_agendamento_month(agendamento, view='calendar'):
+def build_agendamento_return_params(agendamento=None, source=None, view='calendar'):
+    source = source or request.values
     target_date = agendamento.data if agendamento and agendamento.data else date.today()
-    return redirect(url_for('index', year=target_date.year, month=target_date.month, view=view))
+
+    def get_context_value(*keys):
+        for key in keys:
+            value = source.get(key)
+            if value is not None:
+                return value
+        return ''
+
+    try:
+        year = int((get_context_value('context_year', 'year') or '').strip())
+    except (TypeError, ValueError, AttributeError):
+        year = target_date.year
+
+    try:
+        month = int((get_context_value('context_month', 'month') or '').strip())
+    except (TypeError, ValueError, AttributeError):
+        month = target_date.month
+
+    year, month = normalize_month(year, month)
+    params = {'year': year, 'month': month}
+
+    requested_view = (get_context_value('context_view', 'view') or '').strip()
+    params['view'] = requested_view if requested_view in ('calendar', 'line') else view
+
+    doctor_filter = (get_context_value('context_medico', 'medico') or '').strip()
+    protocol_filter = (get_context_value('context_protocolo', 'protocolo') or '').strip()
+    calendar_search = (get_context_value('context_paciente_busca', 'paciente_busca') or '').strip()
+
+    if doctor_filter:
+        params['medico'] = doctor_filter
+    if protocol_filter:
+        params['protocolo'] = protocol_filter
+    if calendar_search:
+        params['paciente_busca'] = calendar_search
+
+    return params
+
+def redirect_to_agendamento_month(agendamento, view='calendar', source=None):
+    return redirect(url_for('index', **build_agendamento_return_params(agendamento=agendamento, source=source, view=view)))
+
+def build_paciente_return_params(agendamento=None, source=None):
+    source = source or request.values
+    params = build_agendamento_return_params(agendamento=agendamento, source=source, view='calendar')
+    patients_search = (source.get('context_q') or source.get('q') or '').strip()
+    if patients_search:
+        params['q'] = patients_search
+    return params
+
+def build_enfermagem_return_params(registro=None, source=None):
+    source = source or request.values
+    target_date = registro.data if registro and registro.data else date.today()
+
+    try:
+        year = int((source.get('context_year') or source.get('year') or '').strip())
+    except (TypeError, ValueError, AttributeError):
+        year = target_date.year
+
+    try:
+        month = int((source.get('context_month') or source.get('month') or '').strip())
+    except (TypeError, ValueError, AttributeError):
+        month = target_date.month
+
+    year, month = normalize_month(year, month)
+    return {'year': year, 'month': month}
 
 def build_numero_procedimento(agendamento_id):
     # Simple globally-unique number derived from agendamento ID.
@@ -1127,6 +1191,7 @@ def create():
     medicos = [{'id': m.id, 'nome': m.nome, 'crm': m.crm, 'cor': m.cor} for m in Medico.query.order_by(Medico.nome).all()]
     procedimentos = [{'id': p.id, 'nome': p.nome, 'cid': p.cid} for p in Procedimento.query.order_by(Procedimento.nome).all()]
     selected_date = request.args.get('date', '')
+    return_context = build_agendamento_return_params(source=request.args, view='calendar')
     if request.method == 'POST':
         nome_medico = request.form['nome_medico'].strip()
         submitted_crm = request.form['crm_medico'].strip()
@@ -1152,7 +1217,7 @@ def create():
         agendamento.numero_procedimento = build_numero_procedimento(agendamento.id)
         db.session.commit()
         return redirect_to_agendamento_month(agendamento, view='calendar')
-    return render_template('edit.html', agendamento=None, medicos=medicos, procedimentos=procedimentos, selected_date=selected_date)
+    return render_template('edit.html', agendamento=None, medicos=medicos, procedimentos=procedimentos, selected_date=selected_date, return_context=return_context)
 
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
 def edit(id):
@@ -1165,6 +1230,7 @@ def edit(id):
     agendamento = Agendamento.query.get_or_404(id)
     medicos = [{'id': m.id, 'nome': m.nome, 'crm': m.crm, 'cor': m.cor} for m in Medico.query.order_by(Medico.nome).all()]
     procedimentos = [{'id': p.id, 'nome': p.nome, 'cid': p.cid} for p in Procedimento.query.order_by(Procedimento.nome).all()]
+    return_context = build_agendamento_return_params(agendamento=agendamento, source=request.args, view='calendar')
     if request.method == 'POST':
         nome_medico = request.form['nome_medico'].strip()
         submitted_crm = request.form['crm_medico'].strip()
@@ -1185,7 +1251,7 @@ def edit(id):
         agendamento.observacao = request.form['observacao']
         db.session.commit()
         return redirect_to_agendamento_month(agendamento, view='calendar')
-    return render_template('edit.html', agendamento=agendamento, medicos=medicos, procedimentos=procedimentos)
+    return render_template('edit.html', agendamento=agendamento, medicos=medicos, procedimentos=procedimentos, return_context=return_context)
 
 @app.route('/delete/<int:id>')
 def delete(id):
@@ -1196,10 +1262,9 @@ def delete(id):
         flash('Acesso negado')
         return redirect(url_for('index'))
     agendamento = Agendamento.query.get_or_404(id)
-    target_date = agendamento.data
     db.session.delete(agendamento)
     db.session.commit()
-    return redirect(url_for('index', year=target_date.year, month=target_date.month, view='calendar'))
+    return redirect_to_agendamento_month(agendamento, view='calendar')
 
 @app.route('/confirmar_cirurgia/<int:id>', methods=['POST'])
 def confirmar_cirurgia(id):
@@ -1230,11 +1295,12 @@ def internacao(id):
         flash('Acesso negado')
         return redirect(url_for('index'))
     agendamento = Agendamento.query.get_or_404(id)
+    return_context = build_agendamento_return_params(agendamento=agendamento, source=request.args, view='calendar')
     if request.method == 'POST':
         protocolo_informado = request.form.get('protocolo', '').strip().upper() or None
         if protocolo_conflita_com_outro_paciente(protocolo_informado, agendamento.nome_paciente, exclude_agendamento_id=agendamento.id):
             flash('Protocolo já cadastrado para outro paciente.')
-            return render_template('internacao.html', agendamento=agendamento)
+            return render_template('internacao.html', agendamento=agendamento, return_context=build_agendamento_return_params(agendamento=agendamento, source=request.form, view='calendar'))
 
         agendamento.protocolo = protocolo_informado
         agendamento.sala_cirurgica = request.form.get('sala_cirurgica', '').strip() or None
@@ -1242,7 +1308,7 @@ def internacao(id):
         db.session.commit()
         flash('Dados de internação atualizados.')
         return redirect_to_agendamento_month(agendamento, view='calendar')
-    return render_template('internacao.html', agendamento=agendamento)
+    return render_template('internacao.html', agendamento=agendamento, return_context=return_context)
 
 @app.route('/paciente/<int:id>', methods=['GET', 'POST'])
 def paciente(id):
@@ -1262,6 +1328,7 @@ def paciente(id):
     ultimo_agendamento = agendamentos_paciente[0] if agendamentos_paciente else agendamento
     protocolo_paciente = next((item.protocolo for item in agendamentos_paciente if item.protocolo), None)
     whatsapp_paciente = next((item.whatsapp_paciente for item in agendamentos_paciente if item.whatsapp_paciente), None)
+    return_context = build_paciente_return_params(agendamento=agendamento, source=request.args)
 
     can_manage = user_can_manage_agendamentos(user)
     can_access_pagamentos = user_can_access_pagamentos(user)
@@ -1269,7 +1336,7 @@ def paciente(id):
     if request.method == 'POST':
         if not can_manage:
             flash('Acesso negado')
-            return redirect(url_for('paciente', id=agendamento.id))
+            return redirect(url_for('paciente', id=agendamento.id, **build_paciente_return_params(agendamento=agendamento, source=request.form)))
 
         action = request.form.get('action')
 
@@ -1277,13 +1344,13 @@ def paciente(id):
             protocolo_informado = request.form.get('protocolo', '').strip().upper() or None
             if protocolo_conflita_com_outro_paciente(protocolo_informado, agendamento.nome_paciente, exclude_agendamento_id=agendamento.id):
                 flash('Protocolo já cadastrado para outro paciente.')
-                return redirect(url_for('paciente', id=agendamento.id))
+                return redirect(url_for('paciente', id=agendamento.id, **build_paciente_return_params(agendamento=agendamento, source=request.form)))
 
             for item in agendamentos_paciente:
                 item.protocolo = protocolo_informado
             db.session.commit()
             flash('Protocolo atualizado com sucesso para este paciente.')
-            return redirect(url_for('paciente', id=agendamento.id))
+            return redirect(url_for('paciente', id=agendamento.id, **build_paciente_return_params(agendamento=agendamento, source=request.form)))
 
         if action == 'whatsapp':
             whatsapp_informado = request.form.get('whatsapp_paciente', '').strip() or None
@@ -1291,15 +1358,15 @@ def paciente(id):
                 item.whatsapp_paciente = whatsapp_informado
             db.session.commit()
             flash('Telefone do paciente atualizado com sucesso.')
-            return redirect(url_for('paciente', id=agendamento.id))
+            return redirect(url_for('paciente', id=agendamento.id, **build_paciente_return_params(agendamento=agendamento, source=request.form)))
 
         if action != 'comprovante':
             flash('Ação inválida.')
-            return redirect(url_for('paciente', id=agendamento.id))
+            return redirect(url_for('paciente', id=agendamento.id, **build_paciente_return_params(agendamento=agendamento, source=request.form)))
 
         if not can_access_pagamentos:
             flash('Acesso negado para a aba de pagamento.')
-            return redirect(url_for('paciente', id=agendamento.id))
+            return redirect(url_for('paciente', id=agendamento.id, **build_paciente_return_params(agendamento=agendamento, source=request.form)))
 
         nome_medico = request.form.get('nome_medico', '').strip()
         procedimento = request.form.get('procedimento', '').strip()
@@ -1313,16 +1380,16 @@ def paciente(id):
 
         if not all([numero_procedimento, nome_medico, procedimento, data_cirurgia_raw, valor_raw, pagante, meio_pagamento]):
             flash('Preencha todos os campos obrigatórios do comprovante.')
-            return redirect(url_for('paciente', id=agendamento.id))
+            return redirect(url_for('paciente', id=agendamento.id, **build_paciente_return_params(agendamento=agendamento, source=request.form)))
 
         agendamento_pagamento = Agendamento.query.filter_by(numero_procedimento=numero_procedimento).first()
         if not agendamento_pagamento:
             flash('Número de procedimento não encontrado.')
-            return redirect(url_for('paciente', id=agendamento.id))
+            return redirect(url_for('paciente', id=agendamento.id, **build_paciente_return_params(agendamento=agendamento, source=request.form)))
 
         if (agendamento_pagamento.nome_paciente or '').strip().lower() != (agendamento.nome_paciente or '').strip().lower():
             flash('Esse número de procedimento pertence a outro paciente.')
-            return redirect(url_for('paciente', id=agendamento.id))
+            return redirect(url_for('paciente', id=agendamento.id, **build_paciente_return_params(agendamento=agendamento, source=request.form)))
 
         try:
             data_cirurgia = datetime.strptime(data_cirurgia_raw, '%Y-%m-%d').date()
@@ -1333,7 +1400,7 @@ def paciente(id):
                 arquivo_comprovante = save_comprovante_pdf(arquivo_pdf)
         except ValueError:
             flash('Revise os dados do comprovante. Valor, datas e arquivo PDF precisam estar válidos.')
-            return redirect(url_for('paciente', id=agendamento.id))
+            return redirect(url_for('paciente', id=agendamento.id, **build_paciente_return_params(agendamento=agendamento, source=request.form)))
 
         comprovante = Comprovante(
             agendamento_id=agendamento_pagamento.id,
@@ -1370,7 +1437,7 @@ def paciente(id):
 
         db.session.commit()
         flash('Pagamento da cirurgia vinculado com sucesso.')
-        return redirect(url_for('paciente', id=agendamento_pagamento.id))
+        return redirect(url_for('paciente', id=agendamento_pagamento.id, **build_paciente_return_params(agendamento=agendamento_pagamento, source=request.form)))
 
     agendamento_ids = [item.id for item in agendamentos_paciente]
     comprovantes = Comprovante.query.filter(
@@ -1387,6 +1454,7 @@ def paciente(id):
         comprovantes=comprovantes,
         can_manage=can_manage,
         can_access_pagamentos=can_access_pagamentos,
+        return_context=return_context,
     )
 
 @app.route('/api/agendamento-por-procedimento')
@@ -1519,6 +1587,7 @@ def enfermagem_create():
     medicos = [{'id': m.id, 'nome': m.nome, 'crm': m.crm, 'cor': m.cor} for m in Medico.query.order_by(Medico.nome).all()]
     procedimentos = [{'id': p.id, 'nome': p.nome, 'cid': p.cid} for p in Procedimento.query.order_by(Procedimento.nome).all()]
     selected_date = request.args.get('date', '')
+    return_context = build_enfermagem_return_params(source=request.args)
 
     if request.method == 'POST':
         nome_colaborador = request.form.get('nome_colaborador', '').strip()
@@ -1529,7 +1598,7 @@ def enfermagem_create():
 
         if not nome_colaborador or not nome_medico or not procedimento_name:
             flash('Preencha colaborador, médico e procedimento.')
-            return render_template('enfermagem_edit.html', registro=None, medicos=medicos, procedimentos=procedimentos, selected_date=selected_date)
+            return render_template('enfermagem_edit.html', registro=None, medicos=medicos, procedimentos=procedimentos, selected_date=selected_date, return_context=build_enfermagem_return_params(source=request.form))
 
         crm_medico = resolve_medico_crm(nome_medico, submitted_crm)
         cid_val = resolve_procedimento_cid(procedimento_name, submitted_cid)
@@ -1546,9 +1615,9 @@ def enfermagem_create():
         )
         db.session.add(registro)
         db.session.commit()
-        return redirect(url_for('enfermagem'))
+        return redirect(url_for('enfermagem', **build_enfermagem_return_params(registro=registro, source=request.form)))
 
-    return render_template('enfermagem_edit.html', registro=None, medicos=medicos, procedimentos=procedimentos, selected_date=selected_date)
+    return render_template('enfermagem_edit.html', registro=None, medicos=medicos, procedimentos=procedimentos, selected_date=selected_date, return_context=return_context)
 
 @app.route('/enfermagem/edit/<int:id>', methods=['GET', 'POST'])
 def enfermagem_edit(id):
@@ -1558,6 +1627,7 @@ def enfermagem_edit(id):
     registro = EnfermagemRegistro.query.get_or_404(id)
     medicos = [{'id': m.id, 'nome': m.nome, 'crm': m.crm, 'cor': m.cor} for m in Medico.query.order_by(Medico.nome).all()]
     procedimentos = [{'id': p.id, 'nome': p.nome, 'cid': p.cid} for p in Procedimento.query.order_by(Procedimento.nome).all()]
+    return_context = build_enfermagem_return_params(registro=registro, source=request.args)
 
     if request.method == 'POST':
         nome_colaborador = request.form.get('nome_colaborador', '').strip()
@@ -1568,7 +1638,7 @@ def enfermagem_edit(id):
 
         if not nome_colaborador or not nome_medico or not procedimento_name:
             flash('Preencha colaborador, médico e procedimento.')
-            return render_template('enfermagem_edit.html', registro=registro, medicos=medicos, procedimentos=procedimentos)
+            return render_template('enfermagem_edit.html', registro=registro, medicos=medicos, procedimentos=procedimentos, return_context=build_enfermagem_return_params(registro=registro, source=request.form))
 
         registro.nome_colaborador = nome_colaborador
         registro.nome_medico = nome_medico
@@ -1578,9 +1648,9 @@ def enfermagem_edit(id):
         registro.data = datetime.strptime(request.form['data'], '%Y-%m-%d').date()
         registro.observacao = request.form.get('observacao', '')
         db.session.commit()
-        return redirect(url_for('enfermagem'))
+        return redirect(url_for('enfermagem', **build_enfermagem_return_params(registro=registro, source=request.form)))
 
-    return render_template('enfermagem_edit.html', registro=registro, medicos=medicos, procedimentos=procedimentos)
+    return render_template('enfermagem_edit.html', registro=registro, medicos=medicos, procedimentos=procedimentos, return_context=return_context)
 
 @app.route('/enfermagem/delete/<int:id>')
 def enfermagem_delete(id):
@@ -1590,7 +1660,7 @@ def enfermagem_delete(id):
     registro = EnfermagemRegistro.query.get_or_404(id)
     db.session.delete(registro)
     db.session.commit()
-    return redirect(url_for('enfermagem'))
+    return redirect(url_for('enfermagem', **build_enfermagem_return_params(registro=registro, source=request.args)))
 
 # ─── Escala de Anestesistas ───────────────────────────────────────────────────
 

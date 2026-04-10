@@ -12,6 +12,12 @@
     <p><strong>Protocolo:</strong> {{ agendamento.protocolo or '-' }}</p>
 
     <form method="post">
+        <input type="hidden" name="context_year" value="{{ return_context.year }}">
+        <input type="hidden" name="context_month" value="{{ return_context.month }}">
+        <input type="hidden" name="context_view" value="{{ return_context.view }}">
+        <input type="hidden" name="context_medico" value="{{ return_context.medico or '' }}">
+        <input type="hidden" name="context_protocolo" value="{{ return_context.protocolo or '' }}">
+        <input type="hidden" name="context_paciente_busca" value="{{ return_context.paciente_busca or '' }}">
         <label for="protocolo">Protocolo:</label>
         <input type="text" id="protocolo" name="protocolo" value="{{ agendamento.protocolo or '' }}">
 

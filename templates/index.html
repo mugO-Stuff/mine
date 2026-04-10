@@ -84,7 +84,7 @@
 {% endif %}
 
 {% if 'user_id' in session and current_user.grau in (2, 3) %}
-    <a class="new-appointment" href="{{ url_for('create') }}">Novo Agendamento</a>
+    <a class="new-appointment" href="{{ url_for('create', year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}">Novo Agendamento</a>
 {% endif %}
 
 {% if view_mode == 'calendar' %}
@@ -95,7 +95,7 @@
                 <div class="day-header-row">
                     <h3>{{ date.day }} <span class="day-weekday">{{ week_days[date.weekday()] }}</span></h3>
                     {% if 'user_id' in session and current_user.grau in (2, 3) %}
-                        <a class="day-add-btn" href="{{ url_for('create', date=date.strftime('%Y-%m-%d')) }}" aria-label="Novo agendamento em {{ date.strftime('%d/%m/%Y') }}">+</a>
+                        <a class="day-add-btn" href="{{ url_for('create', date=date.strftime('%Y-%m-%d'), year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}" aria-label="Novo agendamento em {{ date.strftime('%d/%m/%Y') }}">+</a>
                     {% endif %}
                 </div>
                 {% set anest_nome = anestesista_por_dia.get(date) %}
@@ -109,7 +109,7 @@
                 <div class="appointments-list">
                     {% if appts %}
                         {% for appt in appts %}
-                            <div class="appointment {% if appt.cirurgia_confirmada and not appt.cirurgia_em_curso %}appointment-confirmed{% endif %} {% if appt.esta_concluido %}appointment-done{% endif %} {% if reminder_status.get(appt.id) %}{{ reminder_status.get(appt.id) }}{% endif %} {% if calendar_search and appt.id in calendar_search_match_ids %}search-match{% endif %}" data-hora="{{ appt.hora.strftime('%H:%M') }}" data-paciente="{{ appt.nome_paciente }}" data-medico="{{ appt.nome_medico }}" data-crm="{{ appt.crm_medico }}" data-procedimento="{{ appt.procedimento }}" data-cid="{{ appt.cid_procedimento }}" data-observacao="{{ appt.observacao or '-' }}" data-protocolo="{{ appt.protocolo or '' }}" data-whatsapp="{{ appt.whatsapp_paciente or '' }}" data-sala-cirurgica="{{ appt.sala_cirurgica or '' }}" data-quarto="{{ appt.quarto or '' }}" data-reminder-status="{{ reminder_status.get(appt.id) or '' }}" data-cirurgia-confirmada="{{ '1' if appt.cirurgia_confirmada else '0' }}" data-concluido="{{ '1' if appt.esta_concluido else '0' }}"{% if 'user_id' in session %} data-numero-procedimento="{{ appt.numero_procedimento or '-' }}"{% endif %}{% if 'user_id' in session and current_user.grau in (2, 3) %} data-internacao-url="{{ url_for('internacao', id=appt.id) }}" data-internacao-pending="{{ '1' if not appt.sala_cirurgica or not appt.quarto else '0' }}" data-edit-url="{{ url_for('edit', id=appt.id) }}" data-delete-url="{{ url_for('delete', id=appt.id) }}"{% endif %}{% if 'user_id' in session and current_user.grau == 3 %} data-confirm-url="{{ url_for('confirmar_cirurgia', id=appt.id) }}" data-confirm-available="{{ '1' if appt.cirurgia_confirmavel else '0' }}"{% endif %}>
+                            <div class="appointment {% if appt.cirurgia_confirmada and not appt.cirurgia_em_curso %}appointment-confirmed{% endif %} {% if appt.esta_concluido %}appointment-done{% endif %} {% if reminder_status.get(appt.id) %}{{ reminder_status.get(appt.id) }}{% endif %} {% if calendar_search and appt.id in calendar_search_match_ids %}search-match{% endif %}" data-hora="{{ appt.hora.strftime('%H:%M') }}" data-paciente="{{ appt.nome_paciente }}" data-medico="{{ appt.nome_medico }}" data-crm="{{ appt.crm_medico }}" data-procedimento="{{ appt.procedimento }}" data-cid="{{ appt.cid_procedimento }}" data-observacao="{{ appt.observacao or '-' }}" data-protocolo="{{ appt.protocolo or '' }}" data-whatsapp="{{ appt.whatsapp_paciente or '' }}" data-sala-cirurgica="{{ appt.sala_cirurgica or '' }}" data-quarto="{{ appt.quarto or '' }}" data-reminder-status="{{ reminder_status.get(appt.id) or '' }}" data-cirurgia-confirmada="{{ '1' if appt.cirurgia_confirmada else '0' }}" data-concluido="{{ '1' if appt.esta_concluido else '0' }}"{% if 'user_id' in session %} data-numero-procedimento="{{ appt.numero_procedimento or '-' }}"{% endif %}{% if 'user_id' in session and current_user.grau in (2, 3) %} data-internacao-url="{{ url_for('internacao', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}" data-internacao-pending="{{ '1' if not appt.sala_cirurgica or not appt.quarto else '0' }}" data-edit-url="{{ url_for('edit', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}" data-delete-url="{{ url_for('delete', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}"{% endif %}{% if 'user_id' in session and current_user.grau == 3 %} data-confirm-url="{{ url_for('confirmar_cirurgia', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}" data-confirm-available="{{ '1' if appt.cirurgia_confirmavel else '0' }}"{% endif %}>
                                 <p>{{ appt.hora.strftime('%H:%M') }} - <span class="{% if appt.esta_concluido %}appointment-patient-done{% endif %}">{{ appt.nome_paciente }}</span></p>
                                 {% if appt.cirurgia_confirmada %}
                                     <p><strong>Cirurgia Confirmada</strong></p>
@@ -121,13 +121,13 @@
                                 {% if 'user_id' in session and current_user.grau in (2, 3) %}
                                     <div class="appointment-actions">
                                         {% if current_user.grau == 3 and appt.cirurgia_confirmavel %}
-                                            <form method="post" action="{{ url_for('confirmar_cirurgia', id=appt.id) }}" class="inline-action-form">
+                                            <form method="post" action="{{ url_for('confirmar_cirurgia', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}" class="inline-action-form">
                                                 <button type="submit" class="confirm-surgery-btn">Cirurgia Confirmada</button>
                                             </form>
                                         {% endif %}
-                                        <a href="{{ url_for('internacao', id=appt.id) }}" class="internalacao-btn {% if appt.data <= today and (not appt.sala_cirurgica or not appt.quarto) %}pending{% endif %}">Internação{% if appt.data <= today and (not appt.sala_cirurgica or not appt.quarto) %} ?{% endif %}</a>
-                                        <a href="{{ url_for('edit', id=appt.id) }}">Editar</a>
-                                        <a href="{{ url_for('delete', id=appt.id) }}">Excluir</a>
+                                        <a href="{{ url_for('internacao', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}" class="internalacao-btn {% if appt.data <= today and (not appt.sala_cirurgica or not appt.quarto) %}pending{% endif %}">Internação{% if appt.data <= today and (not appt.sala_cirurgica or not appt.quarto) %} ?{% endif %}</a>
+                                        <a href="{{ url_for('edit', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}">Editar</a>
+                                        <a href="{{ url_for('delete', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}">Excluir</a>
                                     </div>
                                 {% endif %}
                             </div>
@@ -312,21 +312,21 @@
                             {% if 'user_id' in session and current_user.grau in (2, 3) %}
                                 <td class="actions-cell">
                                     {% if current_user.grau == 3 and appt.cirurgia_confirmavel %}
-                                        <form method="post" action="{{ url_for('confirmar_cirurgia', id=appt.id) }}" class="inline-action-form">
+                                        <form method="post" action="{{ url_for('confirmar_cirurgia', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}" class="inline-action-form">
                                             <button type="submit" class="confirm-surgery-btn">Cirurgia Confirmada</button>
                                         </form>
                                     {% endif %}
-                                    <a href="{{ url_for('internacao', id=appt.id) }}" class="internalacao-btn {% if appt.data <= today and (not appt.sala_cirurgica or not appt.quarto) %}pending{% endif %}">Internação{% if appt.data <= today and (not appt.sala_cirurgica or not appt.quarto) %} ?{% endif %}</a>
-                                    <a href="{{ url_for('edit', id=appt.id) }}">Editar</a>
-                                    <a href="{{ url_for('delete', id=appt.id) }}">Excluir</a>
+                                    <a href="{{ url_for('internacao', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}" class="internalacao-btn {% if appt.data <= today and (not appt.sala_cirurgica or not appt.quarto) %}pending{% endif %}">Internação{% if appt.data <= today and (not appt.sala_cirurgica or not appt.quarto) %} ?{% endif %}</a>
+                                    <a href="{{ url_for('edit', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}">Editar</a>
+                                    <a href="{{ url_for('delete', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}">Excluir</a>
 
                                     <button type="button" class="mobile-toggle" data-target="mobile-actions-{{ appt.id }}">Mais</button>
                                     <button type="button" class="mobile-toggle" data-target="mobile-info-{{ appt.id }}">Mais informações</button>
 
                                     <div id="mobile-actions-{{ appt.id }}" class="mobile-actions-panel">
-                                        <a href="{{ url_for('internacao', id=appt.id) }}">Internação</a>
-                                        <a href="{{ url_for('edit', id=appt.id) }}">Editar</a>
-                                        <a href="{{ url_for('delete', id=appt.id) }}">Excluir</a>
+                                        <a href="{{ url_for('internacao', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}">Internação</a>
+                                        <a href="{{ url_for('edit', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}">Editar</a>
+                                        <a href="{{ url_for('delete', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}">Excluir</a>
                                     </div>
 
                                     <div id="mobile-info-{{ appt.id }}" class="mobile-info-panel">

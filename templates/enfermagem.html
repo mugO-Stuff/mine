@@ -28,7 +28,7 @@
         <div class="day day-clickable" data-date="{{ date.strftime('%d/%m/%Y') }}">
             <div class="day-header-row">
                 <h3>{{ date.day }} <span class="day-weekday">{{ week_days[date.weekday()] }}</span></h3>
-                <a class="day-add-btn" href="{{ url_for('enfermagem_create', date=date.strftime('%Y-%m-%d')) }}" aria-label="Novo registro em {{ date.strftime('%d/%m/%Y') }}">+</a>
+                <a class="day-add-btn" href="{{ url_for('enfermagem_create', date=date.strftime('%Y-%m-%d'), year=year, month=month) }}" aria-label="Novo registro em {{ date.strftime('%d/%m/%Y') }}">+</a>
             </div>
             <div class="appointments-list">
                 {% if regs %}
@@ -38,8 +38,8 @@
                             <p>{{ reg.nome_medico }} | CRM {{ reg.crm_medico }}</p>
                             <p>{{ reg.procedimento }}</p>
                             <div class="appointment-actions">
-                                <a href="{{ url_for('enfermagem_edit', id=reg.id) }}">Editar</a>
-                                <a href="{{ url_for('enfermagem_delete', id=reg.id) }}" onclick="return confirm('Excluir registro de enfermagem?')">Excluir</a>
+                                <a href="{{ url_for('enfermagem_edit', id=reg.id, year=year, month=month) }}">Editar</a>
+                                <a href="{{ url_for('enfermagem_delete', id=reg.id, year=year, month=month) }}" onclick="return confirm('Excluir registro de enfermagem?')">Excluir</a>
                             </div>
                         </div>
                     {% endfor %}

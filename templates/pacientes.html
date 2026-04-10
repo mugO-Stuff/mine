@@ -23,7 +23,7 @@
                             <p>{{ paciente.qtd_cirurgias }} cirurgia(s)</p>
                         </div>
                         {% if paciente.perfil_id %}
-                            <a class="secondary-btn" href="{{ url_for('paciente', id=paciente.perfil_id) }}">Abrir Perfil</a>
+                            <a class="secondary-btn" href="{{ url_for('paciente', id=paciente.perfil_id, q=search) }}">Abrir Perfil</a>
                         {% endif %}
                     </div>
 

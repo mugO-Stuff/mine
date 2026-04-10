@@ -3,6 +3,12 @@
 {% block content %}
 <h2>{% if agendamento %}Editar{% else %}Novo{% endif %} Agendamento</h2>
 <form method="post">
+    <input type="hidden" name="context_year" value="{{ return_context.year }}">
+    <input type="hidden" name="context_month" value="{{ return_context.month }}">
+    <input type="hidden" name="context_view" value="{{ return_context.view }}">
+    <input type="hidden" name="context_medico" value="{{ return_context.medico or '' }}">
+    <input type="hidden" name="context_protocolo" value="{{ return_context.protocolo or '' }}">
+    <input type="hidden" name="context_paciente_busca" value="{{ return_context.paciente_busca or '' }}">
     {% if agendamento %}
     <label for="agendamento_id">ID do Agendamento:</label>
     <input type="text" id="agendamento_id" value="{{ agendamento.id }}" readonly>
