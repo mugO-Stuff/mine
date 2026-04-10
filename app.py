@@ -93,13 +93,12 @@ class Agendamento(db.Model):
     @property
     def cirurgia_confirmavel(self):
         dias_ate = (self.data - date.today()).days
-        return 1 <= dias_ate <= 2 and not self.cirurgia_confirmada
+        return dias_ate >= 1 and not self.cirurgia_confirmada
 
     @property
     def cirurgia_em_curso(self):
         return (
             self.data == date.today()
-            and self.cirurgia_confirmada
             and bool(self.sala_cirurgica and str(self.sala_cirurgica).strip())
             and bool(self.quarto and str(self.quarto).strip())
         )
