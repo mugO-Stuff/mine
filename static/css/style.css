@@ -552,6 +552,11 @@ main {
     background-color: #d7e6e2;
 }
 
+.appointment-confirmed {
+    background-color: #fff3b0 !important;
+    border: 1px solid #e0b400;
+}
+
 .appointment-patient-done {
     text-decoration: line-through;
     text-decoration-thickness: 1.5px;
@@ -744,6 +749,10 @@ main {
     background-color: #eef4f2;
 }
 
+.appointments-table tbody tr.appointment-confirmed-row td {
+    background-color: #fff7c7;
+}
+
 .appointments-table .actions-cell {
     white-space: nowrap;
 }
@@ -767,6 +776,28 @@ main {
     text-decoration: none;
     margin-right: 0.3rem;
     font-size: 0.85rem;
+}
+
+.inline-action-form {
+    display: inline;
+    margin: 0;
+}
+
+.confirm-surgery-btn {
+    color: #5d4300;
+    background-color: #ffd54f;
+    padding: 0.45rem 0.7rem;
+    border-radius: 4px;
+    border: 1px solid #d4a300;
+    text-decoration: none;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font: inherit;
+    margin-right: 0.3rem;
+}
+
+.confirm-surgery-btn:hover {
+    background-color: #ffca28;
 }
 
 .appointments-table .actions-cell > a:hover,

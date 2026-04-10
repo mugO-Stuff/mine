@@ -79,6 +79,7 @@ class Agendamento(db.Model):
     data = db.Column(db.Date, nullable=False)
     hora = db.Column(db.Time, nullable=False)
     observacao = db.Column(db.Text)
+    cirurgia_confirmada = db.Column(db.Boolean, default=False)
     sala_cirurgica = db.Column(db.String(50))
     quarto = db.Column(db.String(50))
     protocolo = db.Column(db.String(50))
@@ -88,6 +89,11 @@ class Agendamento(db.Model):
     def esta_concluido(self):
         campos_finais = [self.protocolo, self.sala_cirurgica, self.quarto]
         return self.data < date.today() and all(valor and str(valor).strip() for valor in campos_finais)
+
+    @property
+    def cirurgia_confirmavel(self):
+        dias_ate = (self.data - date.today()).days
+        return 0 <= dias_ate <= 2 and not self.cirurgia_confirmada
 
 class Medico(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -328,6 +334,8 @@ def ensure_sqlite_legacy_columns():
                 conn.execute(text("ALTER TABLE agendamento ADD COLUMN numero_procedimento VARCHAR(40)"))
             if 'whatsapp_paciente' not in agendamento_columns:
                 conn.execute(text("ALTER TABLE agendamento ADD COLUMN whatsapp_paciente VARCHAR(30)"))
+            if 'cirurgia_confirmada' not in agendamento_columns:
+                conn.execute(text("ALTER TABLE agendamento ADD COLUMN cirurgia_confirmada BOOLEAN DEFAULT FALSE"))
             if 'sala_cirurgica' not in agendamento_columns:
                 conn.execute(text("ALTER TABLE agendamento ADD COLUMN sala_cirurgica VARCHAR(50)"))
             if 'quarto' not in agendamento_columns:
@@ -1182,6 +1190,26 @@ def delete(id):
     db.session.delete(agendamento)
     db.session.commit()
     return redirect(url_for('index', year=target_date.year, month=target_date.month, view='calendar'))
+
+@app.route('/confirmar_cirurgia/<int:id>', methods=['POST'])
+def confirmar_cirurgia(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if not user or user.grau != 3:
+        flash('Acesso negado')
+        return redirect(url_for('index'))
+
+    agendamento = Agendamento.query.get_or_404(id)
+    if not agendamento.cirurgia_confirmavel and not agendamento.cirurgia_confirmada:
+        flash('Cirurgia ainda não pode ser confirmada para este agendamento.')
+        return redirect_to_agendamento_month(agendamento, view='calendar')
+
+    agendamento.cirurgia_confirmada = True
+    db.session.commit()
+    flash('Cirurgia confirmada com sucesso.')
+    return redirect_to_agendamento_month(agendamento, view='calendar')
 
 @app.route('/internacao/<int:id>', methods=['GET', 'POST'])
 def internacao(id):
