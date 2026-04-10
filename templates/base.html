@@ -27,6 +27,7 @@
 </head>
 <body>
     <header>
+        <button type="button" class="header-legend-btn" id="legendToggle" aria-label="Abrir legenda de status">!</button>
         <h1>AGENDAMENTOS</h1>
         <nav class="header-nav">
       <button type="button" class="header-back-link" onclick="goToPreviousPage()">Voltar</button>
@@ -47,6 +48,31 @@
         {% block content %}{% endblock %}
     </main>
 
+    <div id="statusLegendModal" class="legend-modal" aria-hidden="true">
+      <div class="legend-modal-content">
+        <button type="button" class="modal-close" id="legendClose">&times;</button>
+        <h3>Legenda dos Status</h3>
+        <div class="legend-list">
+          <div class="legend-item">
+            <span class="legend-swatch legend-in-progress"></span>
+            <span>Amarelo: Cirurgia em curso</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-swatch legend-upcoming"></span>
+            <span>Vermelho: Cirurgia próxima</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-swatch legend-confirmed"></span>
+            <span>Verde: Cirurgia confirmada</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-text-sample legend-done">Paciente concluído</span>
+            <span>Tachado: Cirurgia concluída</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     {% if current_user %}
     <a id="chat-fab" class="chat-fab" href="{{ url_for('chat') }}" aria-label="Abrir chat">Chat</a>
     {% endif %}
@@ -60,6 +86,30 @@
         }
         window.location.href = '{{ url_for("index") }}';
       }
+
+      (function initLegendModal() {
+        const toggle = document.getElementById('legendToggle');
+        const modal = document.getElementById('statusLegendModal');
+        const close = document.getElementById('legendClose');
+        if (!toggle || !modal || !close) return;
+
+        toggle.addEventListener('click', function() {
+          modal.classList.add('visible');
+          modal.setAttribute('aria-hidden', 'false');
+        });
+
+        close.addEventListener('click', function() {
+          modal.classList.remove('visible');
+          modal.setAttribute('aria-hidden', 'true');
+        });
+
+        modal.addEventListener('click', function(event) {
+          if (event.target === modal) {
+            modal.classList.remove('visible');
+            modal.setAttribute('aria-hidden', 'true');
+          }
+        });
+      })();
 
       (function initDraggableChatFab() {
         const fab = document.getElementById('chat-fab');

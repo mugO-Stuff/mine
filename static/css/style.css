@@ -241,6 +241,7 @@ header {
     color: white;
     padding: 0.9rem 1rem;
     text-align: center;
+    position: relative;
 }
 
 header h1 {
@@ -283,6 +284,25 @@ header h1 {
     background-color: rgba(255, 255, 255, 0.18);
 }
 
+.header-legend-btn {
+    position: absolute;
+    left: 1rem;
+    top: 0.9rem;
+    width: 42px;
+    height: 42px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.14);
+    color: white;
+    font-size: 1.15rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.header-legend-btn:hover {
+    background: rgba(255, 255, 255, 0.24);
+}
+
 .chat-fab {
     position: fixed;
     right: 1rem;
@@ -310,6 +330,80 @@ header h1 {
 .chat-fab.dragging {
     opacity: 0.92;
     box-shadow: 0 10px 26px rgba(0, 77, 64, 0.38);
+}
+
+.legend-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1300;
+    padding: 1rem;
+}
+
+.legend-modal.visible {
+    display: flex;
+}
+
+.legend-modal-content {
+    background: #fff;
+    color: #004d40;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 420px;
+    padding: 1rem 1rem 1.1rem;
+    position: relative;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
+}
+
+.legend-modal-content h3 {
+    margin: 0 0 0.85rem;
+}
+
+.legend-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+.legend-swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    flex: 0 0 auto;
+}
+
+.legend-in-progress {
+    background: #fff9c4;
+    border-color: #fbc02d;
+}
+
+.legend-upcoming {
+    background: #ffcdd2;
+    border-color: #e57373;
+}
+
+.legend-confirmed {
+    background: #c8e6c9;
+    border-color: #43a047;
+}
+
+.legend-text-sample {
+    min-width: 110px;
+    color: #004d40;
+}
+
+.legend-done {
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
 }
 
 header a {
@@ -553,8 +647,8 @@ main {
 }
 
 .appointment-confirmed {
-    background-color: #fff3b0 !important;
-    border: 1px solid #e0b400;
+    background-color: #c8e6c9 !important;
+    border: 1px solid #43a047;
 }
 
 .appointment-patient-done {
@@ -563,14 +657,14 @@ main {
     text-decoration-color: rgba(0, 77, 64, 0.75);
 }
 
-.reminder-soon {
-    background-color: #fff9c4 !important;
-    border: 1px solid #ffe082;
-}
-
 .reminder-immediate {
     background-color: #ffcdd2 !important;
     border: 1px solid #e57373;
+}
+
+.reminder-in-progress {
+    background-color: #fff9c4 !important;
+    border: 1px solid #fbc02d;
 }
 
 .search-match {
@@ -750,7 +844,11 @@ main {
 }
 
 .appointments-table tbody tr.appointment-confirmed-row td {
-    background-color: #fff7c7;
+    background-color: #dcedc8;
+}
+
+.appointments-table tbody tr.reminder-in-progress td {
+    background-color: #fff8c4;
 }
 
 .appointments-table .actions-cell {

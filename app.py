@@ -557,9 +557,9 @@ def index():
         Agendamento.data < month_end
     ).all():
         days_until = (appt.data - today).days
-        if days_until == 2:
-            reminder_status[appt.id] = 'reminder-soon'
-        elif days_until == 1:
+        if days_until == 0 and not appt.esta_concluido:
+            reminder_status[appt.id] = 'reminder-in-progress'
+        elif days_until in (1, 2):
             reminder_status[appt.id] = 'reminder-immediate'
         else:
             reminder_status[appt.id] = ''
