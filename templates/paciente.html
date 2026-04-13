@@ -31,7 +31,17 @@
             </div>
             <div>
                 <span class="detail-label">Telefone</span>
-                <strong>{{ whatsapp_paciente or '-' }}</strong>
+                <strong>
+                    {% if whatsapp_paciente %}
+                        {% set whatsapp_digits = whatsapp_paciente | replace(' ', '') | replace('(', '') | replace(')', '') | replace('-', '') | replace('+', '') %}
+                        {% if whatsapp_digits|length in [10, 11] %}
+                            {% set whatsapp_digits = '55' ~ whatsapp_digits %}
+                        {% endif %}
+                        <a href="https://wa.me/{{ whatsapp_digits }}" target="_blank" rel="noopener noreferrer">{{ whatsapp_paciente }}</a>
+                    {% else %}
+                        -
+                    {% endif %}
+                </strong>
             </div>
         </div>
 

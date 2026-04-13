@@ -116,7 +116,7 @@
                                 {% endif %}
                                 {% if 'user_id' in session %}
                                     <p><strong>Nº Procedimento:</strong> {{ appt.numero_procedimento or '-' }}</p>
-                                    <p><strong>Telefone:</strong> {% if appt.whatsapp_paciente %}<a href="https://wa.me/{{ appt.whatsapp_paciente | replace(' ', '') | replace('(', '') | replace(')', '') | replace('-', '') | replace('+', '') }}" target="_blank" rel="noopener noreferrer">{{ appt.whatsapp_paciente }}</a>{% else %}-{% endif %}</p>
+                                    <p><strong>Telefone:</strong> {% if appt.whatsapp_paciente %}{% set whatsapp_digits = appt.whatsapp_paciente | replace(' ', '') | replace('(', '') | replace(')', '') | replace('-', '') | replace('+', '') %}{% if whatsapp_digits|length in [10, 11] %}{% set whatsapp_digits = '55' ~ whatsapp_digits %}{% endif %}<a href="https://wa.me/{{ whatsapp_digits }}" target="_blank" rel="noopener noreferrer">{{ appt.whatsapp_paciente }}</a>{% else %}-{% endif %}</p>
                                 {% endif %}
                                 {% if 'user_id' in session and current_user.grau in (2, 3) %}
                                     <div class="appointment-actions">
@@ -160,9 +160,12 @@
                 if (!raw) {
                     return '-';
                 }
-                const digits = raw.replace(/\D/g, '');
+                let digits = raw.replace(/\D/g, '');
                 if (!digits) {
                     return raw;
+                }
+                if (digits.length === 10 || digits.length === 11) {
+                    digits = '55' + digits;
                 }
                 return '<a href="https://wa.me/' + digits + '" target="_blank" rel="noopener noreferrer">' + raw + '</a>';
             }
@@ -344,7 +347,7 @@
                                     <div id="mobile-info-{{ appt.id }}" class="mobile-info-panel">
                                         <p><strong>Paciente:</strong> <span class="{% if appt.esta_concluido %}appointment-patient-done{% endif %}">{{ appt.nome_paciente }}</span></p>
                                         <p><strong>Nº Procedimento:</strong> {{ appt.numero_procedimento or '-' }}</p>
-                                        <p><strong>Telefone:</strong> {% if appt.whatsapp_paciente %}<a href="https://wa.me/{{ appt.whatsapp_paciente | replace(' ', '') | replace('(', '') | replace(')', '') | replace('-', '') | replace('+', '') }}" target="_blank" rel="noopener noreferrer">{{ appt.whatsapp_paciente }}</a>{% else %}-{% endif %}</p>
+                                        <p><strong>Telefone:</strong> {% if appt.whatsapp_paciente %}{% set whatsapp_digits = appt.whatsapp_paciente | replace(' ', '') | replace('(', '') | replace(')', '') | replace('-', '') | replace('+', '') %}{% if whatsapp_digits|length in [10, 11] %}{% set whatsapp_digits = '55' ~ whatsapp_digits %}{% endif %}<a href="https://wa.me/{{ whatsapp_digits }}" target="_blank" rel="noopener noreferrer">{{ appt.whatsapp_paciente }}</a>{% else %}-{% endif %}</p>
                                         <p><strong>Data:</strong> {{ appt.data.strftime('%d/%m/%Y') }}</p>
                                         <p><strong>Hora:</strong> {{ appt.hora.strftime('%H:%M') }}</p>
                                         <p><strong>Cirurgia Confirmada:</strong> {{ 'Sim' if appt.cirurgia_confirmada else 'Não' }}</p>
