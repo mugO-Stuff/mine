@@ -80,6 +80,7 @@ class Agendamento(db.Model):
     hora = db.Column(db.Time, nullable=False)
     observacao = db.Column(db.Text)
     cirurgia_confirmada = db.Column(db.Boolean, default=False)
+    cirurgia_cancelada = db.Column(db.Boolean, default=False)
     sala_cirurgica = db.Column(db.String(50))
     quarto = db.Column(db.String(50))
     protocolo = db.Column(db.String(50))
@@ -93,7 +94,12 @@ class Agendamento(db.Model):
     @property
     def cirurgia_confirmavel(self):
         dias_ate = (self.data - date.today()).days
-        return dias_ate >= 1 and not self.cirurgia_confirmada
+        return dias_ate >= 1 and not self.cirurgia_confirmada and not self.cirurgia_cancelada
+
+    @property
+    def cirurgia_cancelavel(self):
+        dias_ate = (self.data - date.today()).days
+        return dias_ate >= 1 and not self.cirurgia_cancelada
 
     @property
     def cirurgia_em_curso(self):
@@ -412,6 +418,8 @@ def ensure_sqlite_legacy_columns():
                 conn.execute(text("ALTER TABLE agendamento ADD COLUMN whatsapp_paciente VARCHAR(30)"))
             if 'cirurgia_confirmada' not in agendamento_columns:
                 conn.execute(text("ALTER TABLE agendamento ADD COLUMN cirurgia_confirmada BOOLEAN DEFAULT FALSE"))
+            if 'cirurgia_cancelada' not in agendamento_columns:
+                conn.execute(text("ALTER TABLE agendamento ADD COLUMN cirurgia_cancelada BOOLEAN DEFAULT FALSE"))
             if 'sala_cirurgica' not in agendamento_columns:
                 conn.execute(text("ALTER TABLE agendamento ADD COLUMN sala_cirurgica VARCHAR(50)"))
             if 'quarto' not in agendamento_columns:
@@ -665,7 +673,7 @@ def index():
         days_until = (appt.data - today).days
         if appt.cirurgia_em_curso and not appt.esta_concluido:
             reminder_status[appt.id] = 'reminder-in-progress'
-        elif days_until in (1, 2) and not appt.cirurgia_confirmada:
+        elif days_until in (1, 2) and not appt.cirurgia_confirmada and not appt.cirurgia_cancelada:
             reminder_status[appt.id] = 'reminder-immediate'
         else:
             reminder_status[appt.id] = ''
@@ -1316,8 +1324,30 @@ def confirmar_cirurgia(id):
         return redirect_to_agendamento_month(agendamento, view='calendar')
 
     agendamento.cirurgia_confirmada = True
+    agendamento.cirurgia_cancelada = False
     db.session.commit()
     flash('Cirurgia confirmada com sucesso.')
+    return redirect_to_agendamento_month(agendamento, view='calendar')
+
+@app.route('/cancelar_cirurgia/<int:id>', methods=['POST'])
+def cancelar_cirurgia(id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if not user or user.grau != 3:
+        flash('Acesso negado')
+        return redirect(url_for('index'))
+
+    agendamento = Agendamento.query.get_or_404(id)
+    if not agendamento.cirurgia_cancelavel and not agendamento.cirurgia_cancelada:
+        flash('Cirurgia ainda não pode ser cancelada para este agendamento.')
+        return redirect_to_agendamento_month(agendamento, view='calendar')
+
+    agendamento.cirurgia_cancelada = True
+    agendamento.cirurgia_confirmada = False
+    db.session.commit()
+    flash('Cirurgia cancelada com sucesso.')
     return redirect_to_agendamento_month(agendamento, view='calendar')
 
 @app.route('/internacao/<int:id>', methods=['GET', 'POST'])

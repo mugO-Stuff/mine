@@ -651,6 +651,11 @@ main {
     border: 1px solid #43a047;
 }
 
+.appointment-cancelled {
+    background-color: #ffebee !important;
+    border: 1px solid #c62828;
+}
+
 .appointment-patient-done {
     text-decoration: line-through;
     text-decoration-thickness: 1.5px;
@@ -847,6 +852,10 @@ main {
     background-color: #dcedc8;
 }
 
+.appointments-table tbody tr.appointment-cancelled-row td {
+    background-color: #ffebee;
+}
+
 .appointments-table tbody tr.reminder-in-progress td {
     background-color: #fff8c4;
 }
@@ -896,6 +905,23 @@ main {
 
 .confirm-surgery-btn:hover {
     background-color: #ffca28;
+}
+
+.cancel-surgery-btn {
+    color: #ffffff;
+    background-color: #c62828;
+    padding: 0.45rem 0.7rem;
+    border-radius: 4px;
+    border: 1px solid #8e0000;
+    text-decoration: none;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font: inherit;
+    margin-right: 0.3rem;
+}
+
+.cancel-surgery-btn:hover {
+    background-color: #b71c1c;
 }
 
 .appointments-table .actions-cell > a:hover,
