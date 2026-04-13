@@ -116,7 +116,7 @@
                                 {% endif %}
                                 {% if 'user_id' in session %}
                                     <p><strong>Nº Procedimento:</strong> {{ appt.numero_procedimento or '-' }}</p>
-                                    <p><strong>Telefone:</strong> {{ appt.whatsapp_paciente or '-' }}</p>
+                                    <p><strong>Telefone:</strong> {% if appt.whatsapp_paciente %}<a href="https://wa.me/{{ appt.whatsapp_paciente | replace(' ', '') | replace('(', '') | replace(')', '') | replace('-', '') | replace('+', '') }}" target="_blank" rel="noopener noreferrer">{{ appt.whatsapp_paciente }}</a>{% else %}-{% endif %}</p>
                                 {% endif %}
                                 {% if 'user_id' in session and current_user.grau in (2, 3) %}
                                     <div class="appointment-actions">
@@ -155,6 +155,18 @@
             const modalBody = document.getElementById('modal-body');
             const closeBtn = modal.querySelector('.modal-close');
 
+            function buildWhatsappLink(phone) {
+                const raw = (phone || '').trim();
+                if (!raw) {
+                    return '-';
+                }
+                const digits = raw.replace(/\D/g, '');
+                if (!digits) {
+                    return raw;
+                }
+                return '<a href="https://wa.me/' + digits + '" target="_blank" rel="noopener noreferrer">' + raw + '</a>';
+            }
+
             document.querySelectorAll('.calendar .day-clickable').forEach(function(day) {
                 day.addEventListener('click', function(event) {
                     if (event.target.closest('a')) {
@@ -189,7 +201,7 @@
                             item.className = 'modal-appointment' + (concluido ? ' modal-appointment-done' : '') + (cirurgiaConfirmada ? ' appointment-confirmed' : '') + (reminderStatus ? ' ' + reminderStatus : '');
                             item.innerHTML = '<h4>' + hora + ' - <span class="' + (concluido ? 'appointment-patient-done' : '') + '">' + paciente + '</span></h4>' +
                                 (numeroProcedimento ? '<p><strong>Nº Procedimento:</strong> ' + numeroProcedimento + '</p>' : '') +
-                                (numeroProcedimento ? '<p><strong>Telefone:</strong> ' + (whatsapp || '-') + '</p>' : '') +
+                                '<p><strong>Telefone:</strong> ' + buildWhatsappLink(whatsapp) + '</p>' +
                                 '<p><strong>Protocolo:</strong> ' + (protocolo || '-') + '</p>' +
                                 '<p><strong>Cirurgia Confirmada:</strong> ' + (cirurgiaConfirmada ? 'Sim' : 'Não') + '</p>' +
                                 '<p><strong>Sala Cirúrgica:</strong> ' + (salaCirurgica || '-') + '</p>' +
@@ -332,7 +344,7 @@
                                     <div id="mobile-info-{{ appt.id }}" class="mobile-info-panel">
                                         <p><strong>Paciente:</strong> <span class="{% if appt.esta_concluido %}appointment-patient-done{% endif %}">{{ appt.nome_paciente }}</span></p>
                                         <p><strong>Nº Procedimento:</strong> {{ appt.numero_procedimento or '-' }}</p>
-                                        <p><strong>Telefone:</strong> {{ appt.whatsapp_paciente or '-' }}</p>
+                                        <p><strong>Telefone:</strong> {% if appt.whatsapp_paciente %}<a href="https://wa.me/{{ appt.whatsapp_paciente | replace(' ', '') | replace('(', '') | replace(')', '') | replace('-', '') | replace('+', '') }}" target="_blank" rel="noopener noreferrer">{{ appt.whatsapp_paciente }}</a>{% else %}-{% endif %}</p>
                                         <p><strong>Data:</strong> {{ appt.data.strftime('%d/%m/%Y') }}</p>
                                         <p><strong>Hora:</strong> {{ appt.hora.strftime('%H:%M') }}</p>
                                         <p><strong>Cirurgia Confirmada:</strong> {{ 'Sim' if appt.cirurgia_confirmada else 'Não' }}</p>
