@@ -27,12 +27,14 @@
 </head>
 <body>
     <header>
+        {% if current_user %}
         <button type="button" class="header-legend-btn" id="legendToggle" aria-label="Abrir legenda de status">!</button>
+        {% endif %}
         <h1>AGENDAMENTOS</h1>
         <nav class="header-nav">
+        {% if current_user %}
       <a href="{{ url_for('index') }}" class="header-home-link" aria-label="Página inicial">🏠</a>
       <button type="button" class="header-back-link" onclick="goToPreviousPage()">Voltar</button>
-        {% if current_user %}
             {% if current_user.cargo == 'admin' or current_user.grau == 3 %}
                 <a href="{{ url_for('admin') }}">Admin</a>
             {% endif %}
@@ -226,7 +228,6 @@
       }
 
       async function registerPushForLoggedUser(registration) {
-        {% if current_user %}
         if (!('PushManager' in window) || !('Notification' in window)) {
           return;
         }
@@ -266,7 +267,6 @@
         } catch (error) {
           // Falha silenciosa para não afetar a navegação.
         }
-        {% endif %}
       }
 
       if ('serviceWorker' in navigator) {

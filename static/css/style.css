@@ -1142,8 +1142,8 @@ main {
 }
 
 .status-pago {
-    background-color: #c8e6c9;
-    color: #1b5e20;
+    background-color: #2e7d32;
+    color: #ffffff;
 }
 
 .status-pendente {
@@ -1677,6 +1677,11 @@ button {
 
 .action-link.reject {
     background-color: #bf360c;
+}
+
+form .action-link {
+    border: none;
+    cursor: pointer;
 }
 
 .action-link:hover,

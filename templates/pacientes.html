@@ -21,6 +21,9 @@
                         <div>
                             <h3>{{ paciente.nome_paciente }}</h3>
                             <p>{{ paciente.qtd_cirurgias }} cirurgia(s)</p>
+                            {% if paciente.tem_comprovante %}
+                                <span class="status-badge status-pago">Comprovante salvo</span>
+                            {% endif %}
                         </div>
                         {% if paciente.perfil_id %}
                             <a class="secondary-btn" href="{{ url_for('paciente', id=paciente.perfil_id, q=search) }}">Abrir Perfil</a>

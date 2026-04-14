@@ -200,6 +200,15 @@ def keep_session_persistent():
     if 'user_id' in session:
         session.permanent = True
 
+@app.after_request
+def disable_html_cache(response):
+    # Prevent browser back-button from showing stale authenticated pages.
+    if response.mimetype == 'text/html':
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
+
 def get_csrf_token():
     token = session.get('_csrf_token')
     if not token:
@@ -1490,6 +1499,7 @@ def paciente(id):
     protocolo_paciente = next((item.protocolo for item in agendamentos_paciente if item.protocolo), None)
     whatsapp_paciente = next((item.whatsapp_paciente for item in agendamentos_paciente if item.whatsapp_paciente), None)
     return_context = build_paciente_return_params(agendamento=agendamento, source=request.args)
+    focus_pagamentos = (request.args.get('focus') or '').strip().lower() == 'pagamentos'
 
     can_manage = user_can_manage_agendamentos(user)
     can_access_pagamentos = user_can_access_pagamentos(user)
@@ -1598,7 +1608,9 @@ def paciente(id):
 
         db.session.commit()
         flash('Pagamento da cirurgia vinculado com sucesso.')
-        return redirect(url_for('paciente', id=agendamento_pagamento.id, **build_paciente_return_params(agendamento=agendamento_pagamento, source=request.form)))
+        redirect_params = build_paciente_return_params(agendamento=agendamento_pagamento, source=request.form)
+        redirect_params['focus'] = 'pagamentos'
+        return redirect(url_for('paciente', id=agendamento_pagamento.id, **redirect_params))
 
     agendamento_ids = [item.id for item in agendamentos_paciente]
     comprovantes = Comprovante.query.filter(
@@ -1615,6 +1627,7 @@ def paciente(id):
         comprovantes=comprovantes,
         can_manage=can_manage,
         can_access_pagamentos=can_access_pagamentos,
+        focus_pagamentos=focus_pagamentos,
         return_context=return_context,
     )
 
@@ -1680,7 +1693,9 @@ def editar_comprovante(comprovante_id):
 
         db.session.commit()
         flash('Comprovante atualizado com sucesso.')
-        return redirect(url_for('paciente', id=agendamento.id, **build_paciente_return_params(agendamento=agendamento, source=request.form)))
+        redirect_params = build_paciente_return_params(agendamento=agendamento, source=request.form)
+        redirect_params['focus'] = 'pagamentos'
+        return redirect(url_for('paciente', id=agendamento.id, **redirect_params))
 
     return render_template(
         'edit_comprovante.html',
@@ -1734,6 +1749,8 @@ def pacientes():
     ).all()
 
     pacientes_map = {}
+    paciente_agendamento_ids = {}
+    all_agendamento_ids = []
     for agendamento in agendamentos:
         nome = (agendamento.nome_paciente or '').strip()
         if not nome:
@@ -1752,6 +1769,7 @@ def pacientes():
                 'nome_paciente': nome,
                 'perfil_id': agendamento.id,
                 'qtd_cirurgias': 0,
+                'tem_comprovante': False,
                 'ultimo_agendamento': {
                     'id': agendamento.id,
                     'numero_procedimento': agendamento.numero_procedimento,
@@ -1762,9 +1780,23 @@ def pacientes():
                     'protocolo': agendamento.protocolo,
                 },
             }
+            paciente_agendamento_ids[key] = []
 
         paciente_item = pacientes_map[key]
         paciente_item['qtd_cirurgias'] += 1
+        paciente_agendamento_ids[key].append(agendamento.id)
+        all_agendamento_ids.append(agendamento.id)
+
+    if all_agendamento_ids:
+        agendamento_ids_comprovante = {
+            item[0] for item in db.session.query(Comprovante.agendamento_id)
+            .filter(Comprovante.agendamento_id.in_(all_agendamento_ids))
+            .distinct()
+            .all()
+        }
+        for key, ids in paciente_agendamento_ids.items():
+            if any(ag_id in agendamento_ids_comprovante for ag_id in ids):
+                pacientes_map[key]['tem_comprovante'] = True
 
     pacientes_data = sorted(pacientes_map.values(), key=lambda p: p['nome_paciente'].lower())
 
