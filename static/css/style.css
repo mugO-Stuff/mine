@@ -24,6 +24,12 @@ main {
     left: 0;
     bottom: 0;
 }
+
+.footer-signature {
+    color: #000000;
+    font-weight: 700;
+}
+
 @media (max-width: 560px) {
     .calendar {
         display: flex !important;
