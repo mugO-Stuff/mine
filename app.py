@@ -1775,8 +1775,28 @@ def pacientes():
         session.pop('user_id', None)
         return redirect(url_for('login'))
 
-    search = request.args.get('q', '').strip().lower()
-    agendamentos = Agendamento.query.order_by(
+    search_raw = request.args.get('q', '').strip()
+    search = search_raw.lower()
+    filtro_data = (request.args.get('filtro_data', 'novas') or 'novas').strip().lower()
+    if filtro_data not in ('novas', 'antigas', 'mes'):
+        filtro_data = 'novas'
+
+    mes_filtro = (request.args.get('mes') or '').strip()
+    query = Agendamento.query
+
+    if mes_filtro:
+        try:
+            mes_year_str, mes_month_str = mes_filtro.split('-', 1)
+            mes_year = int(mes_year_str)
+            mes_month = int(mes_month_str)
+            mes_inicio = date(mes_year, mes_month, 1)
+            prox_ano, prox_mes = normalize_month(mes_year, mes_month + 1)
+            mes_fim = date(prox_ano, prox_mes, 1)
+            query = query.filter(Agendamento.data >= mes_inicio, Agendamento.data < mes_fim)
+        except (ValueError, TypeError):
+            mes_filtro = ''
+
+    agendamentos = query.order_by(
         Agendamento.nome_paciente.asc(),
         Agendamento.data.desc(),
         Agendamento.hora.desc(),
@@ -1832,12 +1852,28 @@ def pacientes():
             if any(ag_id in agendamento_ids_comprovante for ag_id in ids):
                 pacientes_map[key]['tem_comprovante'] = True
 
-    pacientes_data = sorted(pacientes_map.values(), key=lambda p: p['nome_paciente'].lower())
+    pacientes_data = list(pacientes_map.values())
+
+    def paciente_data_key(paciente_item):
+        ultimo = paciente_item.get('ultimo_agendamento') or {}
+        return (
+            ultimo.get('data') or date.min,
+            ultimo.get('hora') or datetime.min.time(),
+        )
+
+    if filtro_data == 'antigas':
+        pacientes_data.sort(key=paciente_data_key)
+    elif filtro_data in ('novas', 'mes'):
+        pacientes_data.sort(key=paciente_data_key, reverse=True)
+    else:
+        pacientes_data.sort(key=lambda p: p['nome_paciente'].lower())
 
     return render_template(
         'pacientes.html',
         pacientes=pacientes_data,
-        search=request.args.get('q', '').strip(),
+        search=search_raw,
+        filtro_data=filtro_data,
+        mes_filtro=mes_filtro,
     )
 
 @app.route('/enfermagem')

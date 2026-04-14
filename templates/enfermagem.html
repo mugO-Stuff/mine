@@ -34,6 +34,7 @@
                 {% if regs %}
                     {% for reg in regs %}
                         <div class="appointment" data-observacao="{{ reg.observacao or '-' }}">
+                            <h1 class="enfermagem-dimensionamento-title">Dimensionamento Equipe Enfermagem:</h1>
                             <p><strong>Observação</strong></p>
                             <p>{{ reg.observacao or 'Sem observações.' }}</p>
                             <div class="appointment-actions">
@@ -85,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 items.forEach(function(itemSource) {
                     const item = document.createElement('div');
                     item.className = 'modal-appointment';
-                    item.innerHTML = '<p><strong>Observação:</strong> ' + itemSource.dataset.observacao + '</p>';
+                    item.innerHTML = '<h1 class="enfermagem-dimensionamento-title">Dimensionamento Equipe Enfermagem:</h1><p><strong>Observação:</strong> ' + itemSource.dataset.observacao + '</p>';
                     modalBody.appendChild(item);
                 });
             }
