@@ -68,7 +68,10 @@ http://127.0.0.1:5000
 ## Variaveis de Ambiente
 
 - DATABASE_URL: string de conexao do banco.
+- SECRET_KEY: chave secreta da aplicacao para sessao e CSRF.
 - ASSET_VERSION: versao de cache busting de assets.
+- SESSION_COOKIE_SECURE: forca cookie seguro em HTTPS (1/true para ativar).
+- SESSION_COOKIE_SAMESITE: politica SameSite do cookie de sessao (padrao Lax).
 - DEFAULT_ADMIN_NAME: nome do admin inicial.
 - DEFAULT_ADMIN_PASSWORD: senha do admin inicial.
 - DEFAULT_ADMIN_CARGO: cargo do admin inicial.
@@ -90,7 +93,7 @@ http://127.0.0.1:5000
 
 - GET/POST /create
 - GET/POST /edit/<int:id>
-- GET /delete/<int:id>
+- POST /delete/<int:id>
 - POST /confirmar_cirurgia/<int:id>
 - POST /cancelar_cirurgia/<int:id>
 - GET/POST /internacao/<int:id>
@@ -105,10 +108,10 @@ http://127.0.0.1:5000
 - GET/POST /admin/perfil_usuario/<int:user_id>
 - POST /admin/add_medico
 - GET/POST /admin/edit_medico/<int:medico_id>
-- GET /admin/delete_medico/<int:medico_id>
+- POST /admin/delete_medico/<int:medico_id>
 - POST /admin/add_procedimento
-- GET /approve/<int:user_id>
-- GET /reject/<int:user_id>
+- POST /approve/<int:user_id>
+- POST /reject/<int:user_id>
 - POST /admin/set_user_level/<int:user_id>
 - POST /admin/set_user_grade/<int:user_id>
 - POST /admin/set_user_levels_bulk
@@ -119,7 +122,7 @@ http://127.0.0.1:5000
 - GET /enfermagem
 - GET/POST /enfermagem/create
 - GET/POST /enfermagem/edit/<int:id>
-- GET /enfermagem/delete/<int:id>
+- POST /enfermagem/delete/<int:id>
 
 ### Anestesistas
 

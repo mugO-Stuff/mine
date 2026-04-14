@@ -36,10 +36,12 @@ PT_BR_MONTH_NAMES = {
 }
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key_here'
-import os
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_secret_key_here')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///agendadia.db')
 app.permanent_session_lifetime = timedelta(days=30)
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', '0').strip().lower() in ('1', 'true', 'yes', 'on')
 db = SQLAlchemy(app)
 ASSET_VERSION = os.environ.get('ASSET_VERSION', datetime.utcnow().strftime('%Y%m%d%H%M%S'))
 
@@ -219,7 +221,7 @@ def validate_csrf_token():
     submitted_token = request.form.get('csrf_token', '')
     session_token = session.get('_csrf_token', '')
 
-    if not submitted_token or not session_token or submitted_token != session_token:
+    if not submitted_token or not session_token or not secrets.compare_digest(submitted_token, session_token):
         flash('Sessão expirada ou formulário inválido. Tente novamente.')
         return redirect(request.referrer or url_for('index'))
 
