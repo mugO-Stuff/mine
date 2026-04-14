@@ -8,6 +8,7 @@
     </div>
     <div class="patient-header-actions">
         {% if can_manage %}
+            <a class="secondary-btn" href="{{ url_for('edit', id=ultimo_agendamento.id, year=return_context.year, month=return_context.month, view=return_context.view, medico=return_context.medico, protocolo=return_context.protocolo, paciente_busca=return_context.paciente_busca) }}">Editar Perfil</a>
             <a class="secondary-btn" href="{{ url_for('internacao', id=ultimo_agendamento.id, year=return_context.year, month=return_context.month, view=return_context.view, medico=return_context.medico, protocolo=return_context.protocolo, paciente_busca=return_context.paciente_busca) }}">Internação</a>
         {% endif %}
     </div>

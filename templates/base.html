@@ -30,6 +30,7 @@
         <button type="button" class="header-legend-btn" id="legendToggle" aria-label="Abrir legenda de status">!</button>
         <h1>AGENDAMENTOS</h1>
         <nav class="header-nav">
+      <a href="{{ url_for('index') }}" class="header-home-link" aria-label="Página inicial">🏠</a>
       <button type="button" class="header-back-link" onclick="goToPreviousPage()">Voltar</button>
         {% if current_user %}
             {% if current_user.cargo == 'admin' or current_user.grau == 3 %}
