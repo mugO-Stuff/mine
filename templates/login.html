@@ -3,6 +3,7 @@
 {% block content %}
 <h2>Entrar</h2>
 <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label for="nome">Nome:</label>
     <input type="text" id="nome" name="nome" required>
     <label for="senha">Senha:</label>

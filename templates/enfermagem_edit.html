@@ -3,6 +3,7 @@
 {% block content %}
 <h2>{% if registro %}Editar{% else %}Novo{% endif %} Registro de Enfermagem</h2>
 <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="context_year" value="{{ return_context.year }}">
     <input type="hidden" name="context_month" value="{{ return_context.month }}">
     {% if registro %}

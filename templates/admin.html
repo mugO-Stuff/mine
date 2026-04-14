@@ -38,6 +38,7 @@
         <p>Aqui estão todos os usuários cadastrados e seus níveis de acesso.</p>
         {% if all_users %}
         <form method="post" action="{{ url_for('set_user_levels_bulk') }}" class="user-table-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <table class="user-table">
             <thead>
                     <tr>
@@ -81,6 +82,11 @@
                 var form = document.createElement('form');
                 form.method = 'POST';
                 form.action = deleteUrl;
+                var csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrf_token';
+                csrfInput.value = '{{ csrf_token() }}';
+                form.appendChild(csrfInput);
                 document.body.appendChild(form);
                 form.submit();
             }
@@ -91,6 +97,7 @@
     <section id="medicos">
         <h3>Adicionar Médico</h3>
         <form method="post" action="{{ url_for('add_medico') }}" class="admin-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label for="nome_medico">Nome do Médico:</label>
             <input type="text" id="nome_medico" name="nome_medico" required>
             <label for="crm">CRM:</label>
@@ -140,6 +147,7 @@
     <section id="procedimentos">
         <h3>Adicionar Procedimento</h3>
         <form method="post" action="{{ url_for('add_procedimento') }}" class="admin-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label for="nome_procedimento">Nome do Procedimento:</label>
             <input type="text" id="nome_procedimento" name="nome_procedimento" required>
             <label for="cid">CID:</label>

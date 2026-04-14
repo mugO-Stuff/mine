@@ -54,6 +54,7 @@
                                 data-nome="{{ escala.nome }}"
                                 data-id="{{ escala.id }}">✎</button>
                             <form method="post" action="{{ url_for('anestesista_delete', escala_id=escala.id) }}" style="display:inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="year" value="{{ year }}">
                                 <input type="hidden" name="month" value="{{ month }}">
                                 <button type="submit" class="anest-btn anest-btn-del"
@@ -81,6 +82,7 @@
         <button type="button" id="anest-modal-close" class="modal-close">&times;</button>
         <h3 id="anest-modal-title">Definir Anestesista</h3>
         <form method="post" action="{{ url_for('anestesista_set') }}" id="anest-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="year" value="{{ year }}">
             <input type="hidden" name="month" value="{{ month }}">
             <input type="hidden" name="data" id="anest-form-data">

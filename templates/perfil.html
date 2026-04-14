@@ -10,6 +10,7 @@
     <section class="perfil-card">
         <h3>Dados do Perfil</h3>
         <form method="post" class="perfil-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="dados">
 
             <label for="nome">Nome</label>
@@ -31,6 +32,7 @@
         </form>
 
         <form method="post" class="perfil-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="senha">
 
             {% if not managed_by_admin %}

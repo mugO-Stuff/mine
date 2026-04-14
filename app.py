@@ -8,6 +8,7 @@ from collections import Counter
 import calendar
 import os
 import json
+import secrets
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
@@ -189,12 +190,38 @@ def inject_user():
         current_user=current_user,
         asset_version=ASSET_VERSION,
         build_comprovante_url=build_comprovante_url,
+        csrf_token=get_csrf_token,
     )
 
 @app.before_request
 def keep_session_persistent():
     if 'user_id' in session:
         session.permanent = True
+
+def get_csrf_token():
+    token = session.get('_csrf_token')
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session['_csrf_token'] = token
+    return token
+
+def is_csrf_exempt_request():
+    return request.path.startswith('/api/')
+
+@app.before_request
+def validate_csrf_token():
+    if request.method != 'POST':
+        return
+
+    if is_csrf_exempt_request():
+        return
+
+    submitted_token = request.form.get('csrf_token', '')
+    session_token = session.get('_csrf_token', '')
+
+    if not submitted_token or not session_token or submitted_token != session_token:
+        flash('Sessão expirada ou formulário inválido. Tente novamente.')
+        return redirect(request.referrer or url_for('index'))
 
 def normalize_month(year, month):
     while month < 1:
@@ -417,6 +444,32 @@ def normalizar_numero_procedimento():
         db.session.commit()
     return alterados
 
+def ensure_password_column_capacity(required_length=255):
+    inspector = inspect(db.engine)
+    try:
+        user_columns = inspector.get_columns('user')
+    except Exception:
+        return False
+
+    senha_column = next((col for col in user_columns if col.get('name') == 'senha'), None)
+    if not senha_column:
+        return False
+
+    current_length = getattr(senha_column.get('type'), 'length', None)
+    if current_length is None or current_length >= required_length:
+        return False
+
+    dialect = db.engine.dialect.name
+    with db.engine.begin() as conn:
+        if dialect == 'postgresql':
+            conn.execute(text(f'ALTER TABLE "user" ALTER COLUMN senha TYPE VARCHAR({required_length})'))
+            return True
+        if dialect in ('mysql', 'mariadb'):
+            conn.execute(text(f'ALTER TABLE `user` MODIFY senha VARCHAR({required_length}) NOT NULL'))
+            return True
+
+    return False
+
 def ensure_user_password_hashes():
     users = User.query.all()
     updated = 0
@@ -498,6 +551,7 @@ def ensure_admin_user(update_password=False):
 def ensure_database_ready(create_default_admin=True, update_admin_password=False):
     db.create_all()
     ensure_sqlite_legacy_columns()
+    ensure_password_column_capacity()
     normalizar_numero_procedimento()
     ensure_user_password_hashes()
     os.makedirs(os.path.join(app.static_folder, UPLOAD_COMPROVANTES_FOLDER), exist_ok=True)

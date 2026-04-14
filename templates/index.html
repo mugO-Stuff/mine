@@ -124,11 +124,13 @@
                                     <div class="appointment-actions">
                                         {% if current_user.grau == 3 and appt.cirurgia_confirmavel %}
                                             <form method="post" action="{{ url_for('confirmar_cirurgia', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}" class="inline-action-form">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 <button type="submit" class="confirm-surgery-btn">Cirurgia Confirmada</button>
                                             </form>
                                         {% endif %}
                                         {% if current_user.grau == 3 and appt.cirurgia_cancelavel %}
                                             <form method="post" action="{{ url_for('cancelar_cirurgia', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}" class="inline-action-form">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 <button type="submit" class="cancel-surgery-btn">Cirurgia Cancelada</button>
                                             </form>
                                         {% endif %}
@@ -228,6 +230,12 @@
                                 confirmForm.action = appt.dataset.confirmUrl;
                                 confirmForm.className = 'inline-action-form';
 
+                                const confirmCsrf = document.createElement('input');
+                                confirmCsrf.type = 'hidden';
+                                confirmCsrf.name = 'csrf_token';
+                                confirmCsrf.value = '{{ csrf_token() }}';
+                                confirmForm.appendChild(confirmCsrf);
+
                                 const confirmBtn = document.createElement('button');
                                 confirmBtn.type = 'submit';
                                 confirmBtn.className = 'confirm-surgery-btn';
@@ -240,6 +248,12 @@
                                 cancelForm.method = 'post';
                                 cancelForm.action = appt.dataset.cancelUrl;
                                 cancelForm.className = 'inline-action-form';
+
+                                const cancelCsrf = document.createElement('input');
+                                cancelCsrf.type = 'hidden';
+                                cancelCsrf.name = 'csrf_token';
+                                cancelCsrf.value = '{{ csrf_token() }}';
+                                cancelForm.appendChild(cancelCsrf);
 
                                 const cancelBtn = document.createElement('button');
                                 cancelBtn.type = 'submit';
@@ -358,11 +372,13 @@
                                 <td class="actions-cell">
                                     {% if current_user.grau == 3 and appt.cirurgia_confirmavel %}
                                         <form method="post" action="{{ url_for('confirmar_cirurgia', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}" class="inline-action-form">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <button type="submit" class="confirm-surgery-btn">Cirurgia Confirmada</button>
                                         </form>
                                     {% endif %}
                                     {% if current_user.grau == 3 and appt.cirurgia_cancelavel %}
                                         <form method="post" action="{{ url_for('cancelar_cirurgia', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}" class="inline-action-form">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <button type="submit" class="cancel-surgery-btn">Cirurgia Cancelada</button>
                                         </form>
                                     {% endif %}
