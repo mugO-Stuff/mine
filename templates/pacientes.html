@@ -6,8 +6,14 @@
         <h2>Pacientes</h2>
         <form method="get" class="patients-search-form">
             <input type="text" name="q" value="{{ search }}" placeholder="Buscar paciente por nome, protocolo ou ID">
+            <select name="filtro_data" aria-label="Filtrar por data">
+                <option value="novas" {% if filtro_data == 'novas' %}selected{% endif %}>Mais novas</option>
+                <option value="antigas" {% if filtro_data == 'antigas' %}selected{% endif %}>Mais antigas</option>
+                <option value="mes" {% if filtro_data == 'mes' %}selected{% endif %}>Mês</option>
+            </select>
+            <input type="month" name="mes" value="{{ mes_filtro }}" aria-label="Selecionar mês">
             <button type="submit">Buscar</button>
-            {% if search %}
+            {% if search or filtro_data != 'novas' or mes_filtro %}
                 <a class="clear-filter" href="{{ url_for('pacientes') }}">Limpar</a>
             {% endif %}
         </form>
