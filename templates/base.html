@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Bom Dia</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=asset_version) }}">
 
@@ -82,6 +83,20 @@
 
     <!-- Antes do fechamento do </body> -->
     <script>
+      function getCsrfTokenFromMeta() {
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? (meta.getAttribute('content') || '') : '';
+      }
+
+      window.buildCsrfHeaders = function(existingHeaders) {
+        var headers = Object.assign({}, existingHeaders || {});
+        var csrfToken = getCsrfTokenFromMeta();
+        if (csrfToken) {
+          headers['X-CSRF-Token'] = csrfToken;
+        }
+        return headers;
+      };
+
       function goToPreviousPage() {
         if (window.history.length > 1) {
           window.history.back();
@@ -261,7 +276,7 @@
 
           await fetch('{{ url_for("push_subscribe") }}', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: window.buildCsrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify(subscription)
           });
         } catch (error) {

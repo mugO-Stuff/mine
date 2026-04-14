@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         fetch('/api/chat/send', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: window.buildCsrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ content: content })
         })
         .then(function(resp) { return resp.json(); })

@@ -217,7 +217,7 @@ def get_csrf_token():
     return token
 
 def is_csrf_exempt_request():
-    return request.path.startswith('/api/')
+    return request.path == '/api/push/dispatch'
 
 @app.before_request
 def validate_csrf_token():
@@ -227,9 +227,15 @@ def validate_csrf_token():
     if is_csrf_exempt_request():
         return
 
-    submitted_token = request.form.get('csrf_token', '')
     session_token = session.get('_csrf_token', '')
 
+    if request.path.startswith('/api/'):
+        submitted_token = request.headers.get('X-CSRF-Token', '')
+        if not submitted_token or not session_token or not secrets.compare_digest(submitted_token, session_token):
+            return jsonify({'ok': False, 'error': 'csrf_invalid'}), 400
+        return
+
+    submitted_token = request.form.get('csrf_token', '')
     if not submitted_token or not session_token or not secrets.compare_digest(submitted_token, session_token):
         flash('Sessão expirada ou formulário inválido. Tente novamente.')
         return redirect(request.referrer or url_for('index'))
