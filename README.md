@@ -1,174 +1,173 @@
-# Sistema de Agendamento - Clínica de Estética
+# AgendaDia
 
-## 🎯 Objetivo
+Sistema web para gestao de agendamentos cirurgicos, internacao, pacientes, enfermagem, escala de anestesistas, comprovantes e chat interno.
 
-Aplicação web simples para gerenciamento de agendamentos, com foco em
-usabilidade para pessoas mais velhas, funcionando em computador e
-celular.
+## Visao Geral
 
--   Visualização livre (sem login)
--   Edição apenas com autenticação simples (ID e Senha), requisitos de cadastro: Nome e Senha númerica, minimo 6 digitos
--   Interface limpa e intuitiva
--   Tema em tons de azul cirúrgico
+- Backend em Flask com SQLAlchemy.
+- Frontend server-side com Jinja2, CSS e JavaScript puro.
+- Banco principal via SQLAlchemy (SQLite por padrao, com suporte a DATABASE_URL).
+- PWA com manifest e service worker.
+- Notificacoes push (quando configuradas com VAPID).
 
-------------------------------------------------------------------------
+## Principais Funcionalidades
 
-## 🧱 Tecnologias
+1. Agenda mensal em modo calendario e lista.
+2. Cadastro, edicao e exclusao de agendamentos.
+3. Confirmacao e cancelamento de cirurgia (nivel admin).
+4. Internacao por agendamento (protocolo, sala cirurgica e quarto).
+5. Perfil consolidado do paciente com historico e comprovantes.
+6. Tela de pacientes com busca por nome, protocolo e ID.
+7. Modulo de enfermagem (registro por data e observacao).
+8. Escala mensal de anestesistas.
+9. Painel administrativo para usuarios, medicos e procedimentos.
+10. Chat interno com limpeza automatica de historico antigo.
 
-### Backend
+## Niveis de Acesso
 
--   Python
--   Flask
--   SQLite
--   SQLAlchemy
+- Grau 1: visualizacao.
+- Grau 2: gestao de agendamentos e modulos operacionais.
+- Grau 3: administracao completa.
 
-### Frontend
+O status do usuario pode ser pending, approved ou rejected.
 
--   HTML5
--   CSS3 (responsivo)
--   JavaScript puro (sem frameworks)
+## Autenticacao e Senhas
 
-------------------------------------------------------------------------
+- Login por nome e senha.
+- Senhas sao armazenadas com hash seguro (Werkzeug).
+- Contas antigas com senha em texto puro sao migradas automaticamente para hash no primeiro login valido e tambem no bootstrap da aplicacao.
+- Cadastro e alteracao de senha (usuario e admin) ja salvam senha com hash.
 
-## 🗄️ Banco de Dados
+## Estrutura do Projeto
 
-### users
+- app.py: aplicacao principal, modelos, rotas e regras de negocio.
+- create_admin.py: utilitario para criar/atualizar usuario admin padrao.
+- templates/: paginas HTML (Jinja2).
+- static/: CSS, JS, icones, service worker e manifest.
+- instance/: arquivos locais da instancia.
 
--   id (integer, PK)
--   nome (string)
--   cargo (string)
--   senha (string - apenas números)
+## Setup Local
 
-### agendamentos
+1. Instale Python 3.8+.
+2. Instale dependencias:
 
--   id (integer, PK)
--   nome_paciente (string)
--   nome_medico (string)
--   crm_medico (int)
--   procedimento (string)
--   cid_procedimento (string)
--   data (date)
--   hora (time)
--   observacao (text)
+```bash
+pip install -r requirements.txt
+```
 
-------------------------------------------------------------------------
+3. Execute a aplicacao:
 
-## 🔐 Autenticação
+```bash
+python app.py
+```
 
--   Não exigir login para acessar
--   Entrar obrigatório para criar, editar ou excluir
+4. Acesse:
 
-### Entrar:
+http://127.0.0.1:5000
 
--   Nome
--   Senha numérica
+## Variaveis de Ambiente
 
-### Regras:
+- DATABASE_URL: string de conexao do banco.
+- ASSET_VERSION: versao de cache busting de assets.
+- DEFAULT_ADMIN_NAME: nome do admin inicial.
+- DEFAULT_ADMIN_PASSWORD: senha do admin inicial.
+- DEFAULT_ADMIN_CARGO: cargo do admin inicial.
+- VAPID_PUBLIC_KEY: chave publica para push.
+- VAPID_PRIVATE_KEY: chave privada para push.
+- VAPID_CLAIMS_SUB: identificacao do emissor de push.
+- PUSH_DISPATCH_TOKEN: token para rota de disparo de push.
 
--   Validar usuário existente
--   Permitir ação se válido
--   Mostrar erro se inválido
+## Rotas Principais
 
-------------------------------------------------------------------------
+### Publicas
 
-## 🖥️ Interface
+- GET /: pagina principal da agenda (acesso de leitura).
+- GET/POST /login
+- GET/POST /register
+- GET /logout
 
--   Tema azul cirúrgico (clean)
--   Botões medios
--   Layout simples
--   Fonte legível
--   Espaçamento confortável
--   Responsivo (mobile + desktop)
+### Agenda e Pacientes
 
-------------------------------------------------------------------------
+- GET/POST /create
+- GET/POST /edit/<int:id>
+- GET /delete/<int:id>
+- POST /confirmar_cirurgia/<int:id>
+- POST /cancelar_cirurgia/<int:id>
+- GET/POST /internacao/<int:id>
+- GET/POST /paciente/<int:id>
+- GET/POST /comprovante/editar/<int:comprovante_id>
+- GET /pacientes
+- GET /api/agendamento-por-procedimento
 
-## 📅 Funcionalidades
+### Admin
 
-### Tela principal
+- GET /admin
+- GET/POST /admin/perfil_usuario/<int:user_id>
+- POST /admin/add_medico
+- GET/POST /admin/edit_medico/<int:medico_id>
+- GET /admin/delete_medico/<int:medico_id>
+- POST /admin/add_procedimento
+- GET /approve/<int:user_id>
+- GET /reject/<int:user_id>
+- POST /admin/set_user_level/<int:user_id>
+- POST /admin/set_user_grade/<int:user_id>
+- POST /admin/set_user_levels_bulk
+- POST /admin/delete_user/<int:user_id>
 
--   Lista de agendamentos do dia mostrando uma lista todos os dias do mês, exceto sabados, domingos e feriados
--   Navegação entre datas
+### Enfermagem
 
-### Ações
+- GET /enfermagem
+- GET/POST /enfermagem/create
+- GET/POST /enfermagem/edit/<int:id>
+- GET /enfermagem/delete/<int:id>
 
--   Criar agendamento
--   Editar agendamento
--   Excluir agendamento
+### Anestesistas
 
-------------------------------------------------------------------------
+- GET /anestesistas
+- POST /anestesistas/set
+- POST /anestesistas/delete/<int:escala_id>
 
-## 🧩 Comportamento
+### Chat e Push
 
-## 🚀 Como Executar
+- GET /chat
+- GET /api/chat/messages
+- POST /api/chat/send
+- GET /api/push/public-key
+- POST /api/push/subscribe
+- POST /api/push/unsubscribe
+- POST /api/push/dispatch
 
-1. Instale o Python (versão 3.8 ou superior) se não estiver instalado.
-2. Instale as dependências: `pip install -r requirements.txt`
-3. Execute o aplicativo: `python app.py`
-4. Acesse http://127.0.0.1:5000 no navegador.
+### Assets PWA
 
-### Observações
-- O banco de dados SQLite será criado automaticamente na primeira execução.
-- Para adicionar usuários, você pode modificar o código ou usar um script separado.
+- GET /service-worker.js
+- GET /manifest.webmanifest
+- GET /favicon.ico
 
-### Criar
+## Modelos de Dados (Resumo)
 
--   Formulário:
-    -   Nome do cliente
-    -   Procedimento
-    -   Médico
-    -   Data
-    -   Hora
-    -   Observação
--   Solicitar login antes de salvar
+- User
+- Agendamento
+- Medico
+- Procedimento
+- EscalaAnestesista
+- EnfermagemRegistro
+- Comprovante
+- PushSubscription
+- PushReminderLog
+- ChatMessage
 
-### Editar
+## Observacoes Tecnicas
 
--   Alterar dados
--   Solicitar login antes de salvar
+1. O app cria/ajusta o banco na inicializacao para manter compatibilidade com estrutura legada.
+2. O numero de procedimento e normalizado automaticamente no bootstrap.
+3. Comprovantes aceitam upload de PDF e sao armazenados em static/uploads/comprovantes.
 
-### Excluir
+## Status Atual do Projeto
 
--   Confirmar ação
--   Solicitar login
+Este repositorio representa um MVP funcional em operacao, com modulos clinicos e administrativos ativos.
 
-### Obs
+Melhorias recomendadas para a proxima etapa:
 
-- Médicos e Procedimentos, terão um banco de dados, podendo ser editado pelo usuario com senha.
-- Cada nome de médico será vinculado ao um CRM, e cada Procedimento sera vinculado a um CID, tais informações ficarão gravadas em uma opção de mais detalhes quando clicado em um agendamento especifico.
-
-------------------------------------------------------------------------
-
-## ⚙️ Rotas (Flask)
-
--   GET / → página principal
--   GET /agendamentos → listar
--   POST /agendamentos → criar
--   PUT /agendamentos/`<id>`{=html} → editar
--   DELETE /agendamentos/`<id>`{=html} → excluir
--   POST /login → validar
-
-------------------------------------------------------------------------
-
-## 💡 Regras Técnicas
-
--   Estrutura:
-    -   /templates
-    -   /static
--   Usar fetch API (AJAX)
--   Evitar reload de página
--   O sistema informara a um usuario que acabou de entrar, caso algum outro usuario esteja fazendo alguma alteração na agenda, mas somente se estiver alterando algo, e o aviso sera sutil, como uma notificação pequena na parte superio da aplicação
-
-------------------------------------------------------------------------
-
-## ✨ Extras
-
--   Ordenar por data
--   Destaque de datas próximos
--   Feedback visual (sucesso/erro)
-
-------------------------------------------------------------------------
-
-## 🧪 Objetivo Final
-
-Gerar um MVP funcional: - Rodar localmente - Fácil de usar - Base para
-evolução futura (SaaS)
+1. Endurecimento de seguranca (CSRF e rotas destrutivas em POST).
+2. Modularizacao do backend por dominio.
+3. Suite de testes automatizados para rotas e regras criticas.

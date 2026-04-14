@@ -8,6 +8,7 @@ from collections import Counter
 import calendar
 import os
 import json
+from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 try:
@@ -55,7 +56,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
     cargo = db.Column(db.String(100), nullable=False)
-    senha = db.Column(db.String(100), nullable=False)  # numeric password
+    senha = db.Column(db.String(255), nullable=False)  # hashed password
     status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
     grau = db.Column(db.Integer, default=1)  # nivel: 1=view-only, 2=edit appointments, 3=admin
 
@@ -248,6 +249,32 @@ def user_can_manage_internacao(user):
 def user_can_access_pagamentos(user):
     return bool(user and user.grau == 3)
 
+def is_password_hashed(password_value):
+    value = (password_value or '').strip()
+    return value.startswith('pbkdf2:') or value.startswith('scrypt:')
+
+def set_user_password(user, raw_password):
+    user.senha = generate_password_hash(raw_password)
+
+def verify_user_password(user, raw_password):
+    if not user:
+        return False
+
+    stored_password = user.senha or ''
+    if not stored_password:
+        return False
+
+    if is_password_hashed(stored_password):
+        return check_password_hash(stored_password, raw_password)
+
+    # Legacy plaintext support with transparent migration on successful login.
+    if stored_password == raw_password:
+        set_user_password(user, raw_password)
+        db.session.commit()
+        return True
+
+    return False
+
 def parse_currency_value(raw_value):
     normalized = raw_value.strip().replace('R$', '').replace(' ', '')
     if not normalized:
@@ -390,6 +417,19 @@ def normalizar_numero_procedimento():
         db.session.commit()
     return alterados
 
+def ensure_user_password_hashes():
+    users = User.query.all()
+    updated = 0
+    for user in users:
+        if user.senha and not is_password_hashed(user.senha):
+            set_user_password(user, user.senha)
+            updated += 1
+
+    if updated:
+        db.session.commit()
+
+    return updated
+
 def ensure_sqlite_legacy_columns():
     inspector = inspect(db.engine)
 
@@ -440,7 +480,7 @@ def ensure_admin_user(update_password=False):
         admin = User(
             nome=DEFAULT_ADMIN_NAME,
             cargo=DEFAULT_ADMIN_CARGO,
-            senha=DEFAULT_ADMIN_PASSWORD,
+            senha=generate_password_hash(DEFAULT_ADMIN_PASSWORD),
             status='approved',
             grau=3,
         )
@@ -450,7 +490,7 @@ def ensure_admin_user(update_password=False):
         admin.status = 'approved'
         admin.grau = 3
         if update_password:
-            admin.senha = DEFAULT_ADMIN_PASSWORD
+            set_user_password(admin, DEFAULT_ADMIN_PASSWORD)
 
     db.session.commit()
     return admin, created
@@ -459,6 +499,7 @@ def ensure_database_ready(create_default_admin=True, update_admin_password=False
     db.create_all()
     ensure_sqlite_legacy_columns()
     normalizar_numero_procedimento()
+    ensure_user_password_hashes()
     os.makedirs(os.path.join(app.static_folder, UPLOAD_COMPROVANTES_FOLDER), exist_ok=True)
 
     if create_default_admin:
@@ -804,8 +845,8 @@ def login():
     if request.method == 'POST':
         nome = request.form['nome']
         senha = request.form['senha']
-        user = User.query.filter_by(nome=nome, senha=senha).first()
-        if user and user.status == 'approved':
+        user = User.query.filter_by(nome=nome).first()
+        if user and user.status == 'approved' and verify_user_password(user, senha):
             session['user_id'] = user.id
             session.permanent = True
             return redirect(url_for('index'))
@@ -826,7 +867,7 @@ def register():
         if existing_user:
             flash('Nome já cadastrado')
             return render_template('register.html')
-        user = User(nome=nome, cargo=cargo, senha=senha, status='pending', grau=1)
+        user = User(nome=nome, cargo=cargo, senha=generate_password_hash(senha), status='pending', grau=1)
         db.session.add(user)
         db.session.commit()
         flash('Cadastro solicitado. Aguarde aprovação do admin.')
@@ -942,7 +983,7 @@ def perfil():
             nova_senha = request.form.get('nova_senha', '')
             confirmar_senha = request.form.get('confirmar_senha', '')
 
-            if senha_atual != user.senha:
+            if not verify_user_password(user, senha_atual):
                 flash('A senha atual está incorreta.')
                 return redirect(url_for('perfil'))
 
@@ -954,7 +995,7 @@ def perfil():
                 flash('A confirmação da senha não confere.')
                 return redirect(url_for('perfil'))
 
-            user.senha = nova_senha
+            set_user_password(user, nova_senha)
             db.session.commit()
             flash('Senha alterada com sucesso.')
             return redirect(url_for('perfil'))
@@ -1010,7 +1051,7 @@ def perfil_usuario(user_id):
                 flash('A confirmação da senha não confere.')
                 return redirect(url_for('perfil_usuario', user_id=user.id))
 
-            user.senha = nova_senha
+            set_user_password(user, nova_senha)
             db.session.commit()
             flash('Senha alterada com sucesso.')
             return redirect(url_for('perfil_usuario', user_id=user.id))
