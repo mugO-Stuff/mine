@@ -129,14 +129,20 @@
         {% endif %}
 
         {% if can_access_pagamentos %}
-        <details class="patient-payments-toggle">
+        <details class="patient-payments-toggle" {% if focus_pagamentos %}open{% endif %}>
             <summary>
                 <span>Pagamentos e Comprovantes</span>
                 <span class="summary-pill">{{ comprovantes|length }} registro(s)</span>
             </summary>
 
             {% if can_manage %}
-            <form method="post" class="patient-form" enctype="multipart/form-data">
+            <form method="post" class="patient-form comprovante-form" enctype="multipart/form-data" data-submit-label="Salvar Comprovante">
+                <div class="comprovante-panel-heading">
+                    <div>
+                        <h4>Registrar pagamento</h4>
+                        <p>Preencha os dados e anexe o PDF do comprovante para este procedimento.</p>
+                    </div>
+                </div>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="action" value="comprovante">
                 <input type="hidden" name="context_year" value="{{ return_context.year }}">
@@ -183,18 +189,28 @@
 
                 <label for="arquivo_comprovante">Anexar Comprovante (PDF)</label>
                 <input type="file" id="arquivo_comprovante" name="arquivo_comprovante" accept=".pdf,application/pdf">
+                <p class="form-helper-text">O PDF fica salvo no sistema. Se este procedimento ja tiver comprovante, o registro existente sera atualizado.</p>
 
-                <button type="submit">Salvar Comprovante</button>
+                <button type="submit" class="comprovante-submit-btn">Salvar Comprovante</button>
             </form>
             {% endif %}
 
             {% if comprovantes %}
+            <div class="comprovante-list-header">
+                <div>
+                    <h4>Historico de comprovantes</h4>
+                    <p>Visualize pagamentos ja registrados e abra os PDFs salvos.</p>
+                </div>
+            </div>
             <div class="comprovante-list">
                 {% for comprovante in comprovantes %}
-                <article class="comprovante-card">
+                <article class="comprovante-card comprovante-card-{{ comprovante.status }}">
                     <div class="comprovante-header">
-                        <strong>{{ comprovante.procedimento }}</strong>
-                        <div>
+                        <div class="comprovante-title-group">
+                            <strong class="comprovante-title">{{ comprovante.procedimento }}</strong>
+                            <span class="comprovante-subtitle">Cirurgia em {{ comprovante.data_cirurgia.strftime('%d/%m/%Y') }}</span>
+                        </div>
+                        <div class="comprovante-header-actions">
                             <span class="status-badge status-{{ comprovante.status }}">{{ comprovante.status|capitalize }}</span>
                             {% if can_access_pagamentos %}
                                 <a class="action-link" href="{{ url_for('editar_comprovante', comprovante_id=comprovante.id, year=return_context.year, month=return_context.month, view=return_context.view, medico=return_context.medico, protocolo=return_context.protocolo, paciente_busca=return_context.paciente_busca, q=return_context.q) }}">Editar</a>
@@ -212,7 +228,7 @@
                         </div>
                         <div>
                             <span class="detail-label">Valor</span>
-                            <p>R$ {{ '%.2f'|format(comprovante.valor)|replace('.', ',') }}</p>
+                            <p class="comprovante-amount">R$ {{ '%.2f'|format(comprovante.valor)|replace('.', ',') }}</p>
                         </div>
                         <div>
                             <span class="detail-label">Pagamento</span>
@@ -229,7 +245,10 @@
                         <div>
                             <span class="detail-label">Arquivo</span>
                             {% if comprovante.arquivo_comprovante_dados %}
-                                <p><a class="action-link" href="{{ build_comprovante_url(comprovante.id) }}" target="_blank" rel="noopener">Abrir PDF</a></p>
+                                <div class="comprovante-file-box">
+                                    <p class="comprovante-file-row"><span class="file-badge">PDF salvo</span> <a class="action-link" href="{{ build_comprovante_url(comprovante.id) }}" target="_blank" rel="noopener">Abrir PDF</a></p>
+                                    <span class="comprovante-file-name">{{ comprovante.arquivo_comprovante or 'comprovante.pdf' }}</span>
+                                </div>
                             {% else %}
                                 <p>Sem anexo</p>
                             {% endif %}
@@ -261,9 +280,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     var numeroInput = document.getElementById('numero_procedimento');
     var buscarBtn = document.getElementById('buscar_procedimento');
-    if (!numeroInput || !buscarBtn) {
-        return;
-    }
+    var comprovanteForm = document.querySelector('.comprovante-form');
 
     function preencherDadosProcedimento() {
         var numero = (numeroInput.value || '').trim().toUpperCase();
@@ -291,8 +308,24 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    buscarBtn.addEventListener('click', preencherDadosProcedimento);
-    numeroInput.addEventListener('blur', preencherDadosProcedimento);
+    if (numeroInput && buscarBtn) {
+        buscarBtn.addEventListener('click', preencherDadosProcedimento);
+        numeroInput.addEventListener('blur', preencherDadosProcedimento);
+    }
+
+    if (comprovanteForm) {
+        comprovanteForm.addEventListener('submit', function() {
+            var submitBtn = comprovanteForm.querySelector('button[type="submit"]');
+            if (!submitBtn) {
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.dataset.originalText = submitBtn.dataset.originalText || submitBtn.textContent;
+            submitBtn.textContent = 'Salvando...';
+            comprovanteForm.classList.add('is-submitting');
+        });
+    }
 });
 </script>
 {% endif %}

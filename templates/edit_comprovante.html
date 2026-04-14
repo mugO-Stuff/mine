@@ -2,11 +2,17 @@
 
 {% block content %}
 <h2>Editar Comprovante de Pagamento</h2>
-<div class="admin-form" style="max-width: 760px; margin: 0 auto;">
+<div class="admin-form comprovante-edit-shell" style="max-width: 760px; margin: 0 auto;">
     <p><strong>Paciente:</strong> {{ agendamento.nome_paciente }}</p>
     <p><strong>Número do Procedimento:</strong> {{ agendamento.numero_procedimento or '-' }}</p>
 
-    <form method="post" enctype="multipart/form-data">
+    <form method="post" enctype="multipart/form-data" class="comprovante-form" data-submit-label="Salvar Alteracoes">
+        <div class="comprovante-panel-heading">
+            <div>
+                <h4>Atualizar comprovante</h4>
+                <p>Revise os dados do pagamento e substitua o PDF apenas se necessario.</p>
+            </div>
+        </div>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="context_year" value="{{ return_context.year }}">
         <input type="hidden" name="context_month" value="{{ return_context.month }}">
@@ -47,12 +53,36 @@
 
         <label for="arquivo_comprovante">Substituir Comprovante (PDF)</label>
         <input type="file" id="arquivo_comprovante" name="arquivo_comprovante" accept=".pdf,application/pdf">
+        <p class="form-helper-text">Ao enviar um novo PDF, o arquivo anterior sera substituido neste registro.</p>
 
         {% if comprovante.arquivo_comprovante_dados %}
-            <p><strong>Arquivo atual:</strong> <a class="action-link" href="{{ build_comprovante_url(comprovante.id) }}" target="_blank" rel="noopener">Abrir PDF atual</a></p>
+            <p class="comprovante-file-row"><strong>Arquivo atual:</strong> <span class="file-badge">PDF salvo</span> <a class="action-link" href="{{ build_comprovante_url(comprovante.id) }}" target="_blank" rel="noopener">Abrir PDF atual</a></p>
         {% endif %}
 
-        <button type="submit">Salvar Alterações</button>
+        <div class="comprovante-actions">
+            <button type="submit" class="comprovante-submit-btn">Salvar Alteracoes</button>
+            <a class="action-link" href="{{ url_for('paciente', id=agendamento.id, year=return_context.year, month=return_context.month, view=return_context.view, medico=return_context.medico, protocolo=return_context.protocolo, paciente_busca=return_context.paciente_busca, q=return_context.q, focus='pagamentos') }}">Voltar</a>
+        </div>
     </form>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var comprovanteForm = document.querySelector('.comprovante-form');
+    if (!comprovanteForm) {
+        return;
+    }
+
+    comprovanteForm.addEventListener('submit', function() {
+        var submitBtn = comprovanteForm.querySelector('button[type="submit"]');
+        if (!submitBtn) {
+            return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.dataset.originalText = submitBtn.dataset.originalText || submitBtn.textContent;
+        submitBtn.textContent = 'Salvando...';
+        comprovanteForm.classList.add('is-submitting');
+    });
+});
+</script>
 {% endblock %}

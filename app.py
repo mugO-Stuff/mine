@@ -927,6 +927,10 @@ def comprovante_arquivo(comprovante_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
+    user = User.query.get(session['user_id'])
+    if not user or not user_can_access_pagamentos(user):
+        return 'Acesso negado.', 403
+
     comprovante = Comprovante.query.get_or_404(comprovante_id)
     
     if comprovante.arquivo_comprovante_dados:

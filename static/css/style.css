@@ -1073,6 +1073,42 @@ main {
     margin: 0 0 1.25rem;
 }
 
+.comprovante-form {
+    background: linear-gradient(180deg, #f6fcfb 0%, #edf7f5 100%);
+    border: 1px solid #cde4df;
+    border-radius: 16px;
+    padding: 1rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.comprovante-form.is-submitting {
+    opacity: 0.78;
+}
+
+.comprovante-panel-heading {
+    margin-bottom: 1rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid #d6ebe6;
+}
+
+.comprovante-panel-heading h4 {
+    margin: 0 0 0.25rem;
+    color: #004d40;
+    font-size: 1.05rem;
+}
+
+.comprovante-panel-heading p {
+    margin: 0;
+    color: #476963;
+    font-size: 0.92rem;
+}
+
+.form-helper-text {
+    margin: 0.4rem 0 1rem;
+    font-size: 0.9rem;
+    color: #486761;
+}
+
 .patient-payments-toggle {
     margin-top: 1rem;
     border-top: 1px solid #b7ddd7;
@@ -1120,16 +1156,46 @@ main {
     white-space: nowrap;
 }
 
+.comprovante-submit-btn:disabled,
+.admin-form button:disabled {
+    opacity: 0.7;
+    cursor: wait;
+}
+
 .comprovante-list {
     display: grid;
     gap: 1rem;
 }
 
+.comprovante-list-header {
+    margin: 1.4rem 0 0.25rem;
+}
+
+.comprovante-list-header h4 {
+    margin: 0 0 0.25rem;
+    color: #004d40;
+}
+
+.comprovante-list-header p {
+    margin: 0;
+    color: #4e6d67;
+    font-size: 0.92rem;
+}
+
 .comprovante-card {
     background: white;
-    border-radius: 12px;
+    border-radius: 16px;
     padding: 1rem;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 10px 24px rgba(0, 77, 64, 0.08);
+    border-left: 5px solid #89bdb4;
+}
+
+.comprovante-card-pago {
+    border-left-color: #2e7d32;
+}
+
+.comprovante-card-pendente {
+    border-left-color: #f9a825;
 }
 
 .comprovante-header {
@@ -1138,6 +1204,29 @@ main {
     align-items: center;
     gap: 1rem;
     margin-bottom: 1rem;
+}
+
+.comprovante-title-group {
+    display: grid;
+    gap: 0.2rem;
+}
+
+.comprovante-title {
+    font-size: 1.08rem;
+    color: #053b33;
+}
+
+.comprovante-subtitle {
+    color: #54716b;
+    font-size: 0.9rem;
+}
+
+.comprovante-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .status-badge {
@@ -1158,9 +1247,63 @@ main {
     color: #e65100;
 }
 
+.comprovante-amount {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #004d40;
+}
+
+.comprovante-file-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.comprovante-file-box {
+    display: grid;
+    gap: 0.35rem;
+    padding: 0.75rem 0.85rem;
+    border-radius: 12px;
+    background: #f2fbf8;
+    border: 1px solid #d3eae4;
+}
+
+.file-badge {
+    display: inline-block;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: #e0f2f1;
+    color: #00695c;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.comprovante-file-name {
+    color: #56716c;
+    font-size: 0.86rem;
+    word-break: break-word;
+}
+
+.comprovante-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
 .empty-state {
     margin: 0;
     color: #004d40;
+}
+
+.comprovante-edit-shell {
+    background: linear-gradient(180deg, #ffffff 0%, #f6fbfa 100%);
+    border: 1px solid #d5e8e3;
+    border-radius: 18px;
+    padding: 1.25rem;
+    box-shadow: 0 10px 24px rgba(0, 77, 64, 0.06);
 }
 
 .patient-link {
