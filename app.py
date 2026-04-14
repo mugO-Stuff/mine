@@ -217,7 +217,7 @@ def get_csrf_token():
     return token
 
 def is_csrf_exempt_request():
-    return request.path == '/api/push/dispatch'
+    return request.path in ('/api/push/dispatch', '/login', '/register')
 
 @app.before_request
 def validate_csrf_token():
@@ -238,7 +238,7 @@ def validate_csrf_token():
     submitted_token = request.form.get('csrf_token', '')
     if not submitted_token or not session_token or not secrets.compare_digest(submitted_token, session_token):
         flash('Sessão expirada ou formulário inválido. Tente novamente.')
-        return redirect(request.referrer or url_for('index'))
+        return redirect(request.referrer or request.path or url_for('index'))
 
 def normalize_month(year, month):
     while month < 1:
@@ -624,7 +624,13 @@ def build_comprovante_url(stored_path):
     normalized = normalize_comprovante_relpath(stored_path)
     if not normalized:
         return '#'
-    return url_for('static', filename=normalized)
+    return url_for('comprovante_arquivo', stored_path=normalized)
+
+def resolve_comprovante_filename(stored_path):
+    normalized = normalize_comprovante_relpath(stored_path)
+    if not normalized:
+        return ''
+    return os.path.basename(normalized)
 
 def cleanup_old_chat_messages():
     cutoff = datetime.utcnow() - timedelta(days=30)
@@ -910,6 +916,28 @@ def web_manifest():
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(app.static_folder, 'favicon.ico', mimetype='image/x-icon')
+
+@app.route('/comprovante/arquivo/<path:stored_path>')
+def comprovante_arquivo(stored_path):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    filename = resolve_comprovante_filename(stored_path)
+    if not filename:
+        return 'Arquivo não encontrado.', 404
+
+    candidate_dirs = [
+        os.path.join(app.static_folder, UPLOAD_COMPROVANTES_FOLDER),
+        os.path.join(app.root_path, UPLOAD_COMPROVANTES_FOLDER),
+        os.path.join(app.instance_path, UPLOAD_COMPROVANTES_FOLDER),
+    ]
+
+    for directory in candidate_dirs:
+        abs_path = os.path.join(directory, filename)
+        if os.path.isfile(abs_path):
+            return send_from_directory(directory, filename, mimetype='application/pdf')
+
+    return 'Arquivo não encontrado.', 404
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
