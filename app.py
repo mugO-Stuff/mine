@@ -961,34 +961,62 @@ def comprovante_arquivo(comprovante_id):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        nome = request.form['nome']
-        senha = request.form['senha']
-        user = User.query.filter_by(nome=nome).first()
-        if user and user.status == 'approved' and verify_user_password(user, senha):
-            session['user_id'] = user.id
-            session.permanent = True
-            return redirect(url_for('index'))
-        else:
-            flash('Credenciais inválidas ou conta não aprovada')
+        nome = request.form.get('nome', '').strip()
+        senha = request.form.get('senha', '')
+
+        if not nome or not senha:
+            flash('Preencha nome e senha para entrar.')
+            return render_template('login.html')
+
+        user = User.query.filter(func.lower(User.nome) == nome.lower()).order_by(User.id.asc()).first()
+        if not user:
+            flash('Usuario nao encontrado.')
+            return render_template('login.html')
+
+        user_status = (user.status or '').strip().lower()
+        if user_status != 'approved':
+            if user_status == 'pending':
+                flash('Conta ainda nao aprovada pelo administrador.')
+            elif user_status == 'rejected':
+                flash('Conta rejeitada. Solicite nova avaliacao ao administrador.')
+            else:
+                flash('Conta sem aprovacao. Contate o administrador.')
+            return render_template('login.html')
+
+        if not verify_user_password(user, senha):
+            flash('Senha incorreta.')
+            return render_template('login.html')
+
+        session['user_id'] = user.id
+        session.permanent = True
+        return redirect(url_for('index'))
+
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        nome = request.form['nome']
-        cargo = request.form['cargo']
-        senha = request.form['senha']
+        nome = request.form.get('nome', '').strip()
+        cargo = request.form.get('cargo', '').strip()
+        senha = request.form.get('senha', '')
+
+        if not nome or not cargo or not senha:
+            flash('Preencha nome, cargo e senha para cadastrar.')
+            return render_template('register.html')
+
         if len(senha) < 6 or not senha.isdigit():
-            flash('Senha deve ter pelo menos 6 dígitos numéricos')
+            flash('Senha deve conter somente numeros e no minimo 6 digitos.')
             return render_template('register.html')
-        existing_user = User.query.filter_by(nome=nome).first()
+
+        existing_user = User.query.filter(func.lower(User.nome) == nome.lower()).order_by(User.id.asc()).first()
         if existing_user:
-            flash('Nome já cadastrado')
+            flash('Nome ja cadastrado. Use exatamente este nome para login.')
             return render_template('register.html')
+
         user = User(nome=nome, cargo=cargo, senha=generate_password_hash(senha), status='pending', grau=1)
         db.session.add(user)
         db.session.commit()
-        flash('Cadastro solicitado. Aguarde aprovação do admin.')
+        flash('Cadastro solicitado. Aguarde aprovacao do admin.')
         return redirect(url_for('login'))
     return render_template('register.html')
 

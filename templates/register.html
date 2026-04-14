@@ -4,12 +4,13 @@
 <h2>Cadastro</h2>
 <form method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label for="nome">Nome:</label>
-    <input type="text" id="nome" name="nome" required>
+    <label for="nome">Nome (o mesmo para login):</label>
+    <input type="text" id="nome" name="nome" value="{{ request.form.get('nome', '') }}" required>
+    <p class="form-helper-text">Guarde este nome e use exatamente igual ao entrar no sistema.</p>
     <label for="cargo">Cargo:</label>
-    <input type="text" id="cargo" name="cargo" required>
-    <label for="senha">Senha (mínimo 6 dígitos):</label>
-    <input type="password" id="senha" name="senha" required>
+    <input type="text" id="cargo" name="cargo" value="{{ request.form.get('cargo', '') }}" required>
+    <label for="senha">Senha (somente numeros, minimo 6 digitos):</label>
+    <input type="password" id="senha" name="senha" inputmode="numeric" pattern="[0-9]{6,}" title="Use apenas numeros (minimo 6)." required>
     <button type="submit">Cadastrar</button>
 </form>
 <p>Já tem conta? <a href="{{ url_for('login') }}">Entrar</a></p>
