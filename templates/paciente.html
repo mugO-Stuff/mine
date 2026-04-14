@@ -228,8 +228,8 @@
                         </div>
                         <div>
                             <span class="detail-label">Arquivo</span>
-                            {% if comprovante.arquivo_comprovante %}
-                                <p><a class="action-link" href="{{ build_comprovante_url(comprovante.arquivo_comprovante) }}" target="_blank" rel="noopener">Abrir PDF</a></p>
+                            {% if comprovante.arquivo_comprovante_dados %}
+                                <p><a class="action-link" href="{{ build_comprovante_url(comprovante.id) }}" target="_blank" rel="noopener">Abrir PDF</a></p>
                             {% else %}
                                 <p>Sem anexo</p>
                             {% endif %}

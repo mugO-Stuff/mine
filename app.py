@@ -153,6 +153,7 @@ class Comprovante(db.Model):
     pagante = db.Column(db.String(100), nullable=False)
     meio_pagamento = db.Column(db.String(50), nullable=False)
     arquivo_comprovante = db.Column(db.String(255))
+    arquivo_comprovante_dados = db.Column(db.LargeBinary)
     status = db.Column(db.String(20), default='pendente')
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -539,6 +540,8 @@ def ensure_sqlite_legacy_columns():
 
         if comprovante_columns and 'arquivo_comprovante' not in comprovante_columns:
             conn.execute(text("ALTER TABLE comprovante ADD COLUMN arquivo_comprovante VARCHAR(255)"))
+        if comprovante_columns and 'arquivo_comprovante_dados' not in comprovante_columns:
+            conn.execute(text("ALTER TABLE comprovante ADD COLUMN arquivo_comprovante_dados LONGBLOB"))
 
 def ensure_admin_user(update_password=False):
     admin = User.query.filter_by(nome=DEFAULT_ADMIN_NAME).order_by(User.id).first()
@@ -581,20 +584,15 @@ def ensure_database_ready(create_default_admin=True, update_admin_password=False
 def save_comprovante_pdf(uploaded_file):
     filename = secure_filename(uploaded_file.filename or '')
     if not filename:
-        return None
+        return None, None
 
     if not filename.lower().endswith('.pdf'):
         raise ValueError('Somente arquivos PDF são permitidos para comprovante.')
 
-    timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S%f')
-    stored_name = f"comprovante_{timestamp}.pdf"
-    rel_path = os.path.join(UPLOAD_COMPROVANTES_FOLDER, stored_name)
-    abs_path = os.path.join(app.static_folder, rel_path)
+    pdf_data = uploaded_file.read()
+    uploaded_file.seek(0)
 
-    os.makedirs(os.path.dirname(abs_path), exist_ok=True)
-    uploaded_file.save(abs_path)
-
-    return rel_path.replace('\\', '/')
+    return filename, pdf_data
 
 def normalize_comprovante_relpath(stored_path):
     raw = (stored_path or '').strip().replace('\\', '/')
@@ -620,11 +618,10 @@ def normalize_comprovante_relpath(stored_path):
 
     return f"uploads/comprovantes/{filename_only}"
 
-def build_comprovante_url(stored_path):
-    normalized = normalize_comprovante_relpath(stored_path)
-    if not normalized:
+def build_comprovante_url(comprovante_id):
+    if not comprovante_id:
         return '#'
-    return url_for('comprovante_arquivo', stored_path=normalized)
+    return url_for('comprovante_arquivo', comprovante_id=comprovante_id)
 
 def resolve_comprovante_filename(stored_path):
     normalized = normalize_comprovante_relpath(stored_path)
@@ -917,26 +914,36 @@ def web_manifest():
 def favicon():
     return send_from_directory(app.static_folder, 'favicon.ico', mimetype='image/x-icon')
 
-@app.route('/comprovante/arquivo/<path:stored_path>')
-def comprovante_arquivo(stored_path):
+@app.route('/comprovante/arquivo/<int:comprovante_id>')
+def comprovante_arquivo(comprovante_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    filename = resolve_comprovante_filename(stored_path)
-    if not filename:
-        return 'Arquivo não encontrado.', 404
-
-    candidate_dirs = [
-        os.path.join(app.static_folder, UPLOAD_COMPROVANTES_FOLDER),
-        os.path.join(app.root_path, UPLOAD_COMPROVANTES_FOLDER),
-        os.path.join(app.instance_path, UPLOAD_COMPROVANTES_FOLDER),
-    ]
-
-    for directory in candidate_dirs:
-        abs_path = os.path.join(directory, filename)
-        if os.path.isfile(abs_path):
-            return send_from_directory(directory, filename, mimetype='application/pdf')
-
+    comprovante = Comprovante.query.get_or_404(comprovante_id)
+    
+    if comprovante.arquivo_comprovante_dados:
+        filename = comprovante.arquivo_comprovante or f'comprovante_{comprovante.id}.pdf'
+        if not filename.endswith('.pdf'):
+            filename += '.pdf'
+        return comprovante.arquivo_comprovante_dados, 200, {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': f'inline; filename="{filename}"'
+        }
+    
+    if comprovante.arquivo_comprovante:
+        normalized = normalize_comprovante_relpath(comprovante.arquivo_comprovante)
+        if normalized:
+            filename = os.path.basename(normalized)
+            candidate_dirs = [
+                os.path.join(app.static_folder, UPLOAD_COMPROVANTES_FOLDER),
+                os.path.join(app.root_path, UPLOAD_COMPROVANTES_FOLDER),
+                os.path.join(app.instance_path, UPLOAD_COMPROVANTES_FOLDER),
+            ]
+            for directory in candidate_dirs:
+                abs_path = os.path.join(directory, filename)
+                if os.path.isfile(abs_path):
+                    return send_from_directory(directory, filename, mimetype='application/pdf')
+    
     return 'Arquivo não encontrado.', 404
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -1600,9 +1607,10 @@ def paciente(id):
             data_cirurgia = datetime.strptime(data_cirurgia_raw, '%Y-%m-%d').date()
             data_pagamento = datetime.strptime(data_pagamento_raw, '%Y-%m-%d').date() if data_pagamento_raw else None
             valor = parse_currency_value(valor_raw)
-            arquivo_comprovante = None
+            arquivo_nome = None
+            arquivo_dados = None
             if arquivo_pdf and arquivo_pdf.filename:
-                arquivo_comprovante = save_comprovante_pdf(arquivo_pdf)
+                arquivo_nome, arquivo_dados = save_comprovante_pdf(arquivo_pdf)
         except ValueError:
             flash('Revise os dados do comprovante. Valor, datas e arquivo PDF precisam estar válidos.')
             return redirect(url_for('paciente', id=agendamento.id, **build_paciente_return_params(agendamento=agendamento, source=request.form)))
@@ -1616,7 +1624,8 @@ def paciente(id):
             data_pagamento=data_pagamento,
             pagante=pagante,
             meio_pagamento=meio_pagamento,
-            arquivo_comprovante=arquivo_comprovante,
+            arquivo_comprovante=arquivo_nome,
+            arquivo_comprovante_dados=arquivo_dados,
             status='pago' if data_pagamento else 'pendente',
         )
 
@@ -1631,8 +1640,9 @@ def paciente(id):
             comprovante_existente.pagante = pagante
             comprovante_existente.meio_pagamento = meio_pagamento
             comprovante_existente.status = 'pago' if data_pagamento else 'pendente'
-            if arquivo_comprovante:
-                comprovante_existente.arquivo_comprovante = arquivo_comprovante
+            if arquivo_dados:
+                comprovante_existente.arquivo_comprovante = arquivo_nome
+                comprovante_existente.arquivo_comprovante_dados = arquivo_dados
         else:
             db.session.add(comprovante)
 
@@ -1702,9 +1712,10 @@ def editar_comprovante(comprovante_id):
             data_cirurgia = datetime.strptime(data_cirurgia_raw, '%Y-%m-%d').date()
             data_pagamento = datetime.strptime(data_pagamento_raw, '%Y-%m-%d').date() if data_pagamento_raw else None
             valor = parse_currency_value(valor_raw)
-            arquivo_comprovante = None
+            arquivo_nome = None
+            arquivo_dados = None
             if arquivo_pdf and arquivo_pdf.filename:
-                arquivo_comprovante = save_comprovante_pdf(arquivo_pdf)
+                arquivo_nome, arquivo_dados = save_comprovante_pdf(arquivo_pdf)
         except ValueError:
             flash('Revise os dados do comprovante. Valor, datas e arquivo PDF precisam estar válidos.')
             return render_template(
@@ -1722,8 +1733,9 @@ def editar_comprovante(comprovante_id):
         comprovante.pagante = pagante
         comprovante.meio_pagamento = meio_pagamento
         comprovante.status = 'pago' if data_pagamento else 'pendente'
-        if arquivo_comprovante:
-            comprovante.arquivo_comprovante = arquivo_comprovante
+        if arquivo_dados:
+            comprovante.arquivo_comprovante = arquivo_nome
+            comprovante.arquivo_comprovante_dados = arquivo_dados
 
         db.session.commit()
         flash('Comprovante atualizado com sucesso.')

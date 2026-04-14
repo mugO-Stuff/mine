@@ -48,8 +48,8 @@
         <label for="arquivo_comprovante">Substituir Comprovante (PDF)</label>
         <input type="file" id="arquivo_comprovante" name="arquivo_comprovante" accept=".pdf,application/pdf">
 
-        {% if comprovante.arquivo_comprovante %}
-            <p><strong>Arquivo atual:</strong> <a class="action-link" href="{{ build_comprovante_url(comprovante.arquivo_comprovante) }}" target="_blank" rel="noopener">Abrir PDF atual</a></p>
+        {% if comprovante.arquivo_comprovante_dados %}
+            <p><strong>Arquivo atual:</strong> <a class="action-link" href="{{ build_comprovante_url(comprovante.id) }}" target="_blank" rel="noopener">Abrir PDF atual</a></p>
         {% endif %}
 
         <button type="submit">Salvar Alterações</button>
