@@ -88,7 +88,7 @@ class Agendamento(db.Model):
 
     @property
     def esta_concluido(self):
-        campos_finais = [self.protocolo, self.sala_cirurgica, self.quarto]
+        campos_finais = [self.sala_cirurgica, self.quarto]
         return self.data < date.today() and all(valor and str(valor).strip() for valor in campos_finais)
 
     @property
