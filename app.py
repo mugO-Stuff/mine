@@ -1719,32 +1719,22 @@ def enfermagem_create():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-    medicos = [{'id': m.id, 'nome': m.nome, 'crm': m.crm, 'cor': m.cor} for m in Medico.query.order_by(Medico.nome).all()]
-    procedimentos = [{'id': p.id, 'nome': p.nome, 'cid': p.cid} for p in Procedimento.query.order_by(Procedimento.nome).all()]
     selected_date = request.args.get('date', '')
     return_context = build_enfermagem_return_params(source=request.args)
 
     if request.method == 'POST':
-        nome_colaborador = request.form.get('nome_colaborador', '').strip()
-        nome_medico = request.form.get('nome_medico', '').strip()
-        procedimento_name = request.form.get('procedimento', '').strip()
-        submitted_crm = request.form.get('crm_medico', '').strip()
-        submitted_cid = request.form.get('cid_procedimento', '').strip()
-
-        if not nome_colaborador or not nome_medico or not procedimento_name:
-            flash('Preencha colaborador, médico e procedimento.')
-            return render_template('enfermagem_edit.html', registro=None, medicos=medicos, procedimentos=procedimentos, selected_date=selected_date, return_context=build_enfermagem_return_params(source=request.form))
-
-        crm_medico = resolve_medico_crm(nome_medico, submitted_crm)
-        cid_val = resolve_procedimento_cid(procedimento_name, submitted_cid)
+        submitted_date = request.form.get('data', '').strip()
+        if not submitted_date:
+            flash('Preencha a data do registro.')
+            return render_template('enfermagem_edit.html', registro=None, selected_date=selected_date, return_context=build_enfermagem_return_params(source=request.form))
 
         registro = EnfermagemRegistro(
-            nome_colaborador=nome_colaborador,
-            nome_medico=nome_medico,
-            crm_medico=crm_medico,
-            procedimento=procedimento_name,
-            cid_procedimento=cid_val,
-            data=datetime.strptime(request.form['data'], '%Y-%m-%d').date(),
+            nome_colaborador='',
+            nome_medico='',
+            crm_medico=0,
+            procedimento='',
+            cid_procedimento='',
+            data=datetime.strptime(submitted_date, '%Y-%m-%d').date(),
             observacao=request.form.get('observacao', ''),
             created_by=session.get('user_id'),
         )
@@ -1752,7 +1742,7 @@ def enfermagem_create():
         db.session.commit()
         return redirect(url_for('enfermagem', **build_enfermagem_return_params(registro=registro, source=request.form)))
 
-    return render_template('enfermagem_edit.html', registro=None, medicos=medicos, procedimentos=procedimentos, selected_date=selected_date, return_context=return_context)
+    return render_template('enfermagem_edit.html', registro=None, selected_date=selected_date, return_context=return_context)
 
 @app.route('/enfermagem/edit/<int:id>', methods=['GET', 'POST'])
 def enfermagem_edit(id):
@@ -1760,32 +1750,20 @@ def enfermagem_edit(id):
         return redirect(url_for('login'))
 
     registro = EnfermagemRegistro.query.get_or_404(id)
-    medicos = [{'id': m.id, 'nome': m.nome, 'crm': m.crm, 'cor': m.cor} for m in Medico.query.order_by(Medico.nome).all()]
-    procedimentos = [{'id': p.id, 'nome': p.nome, 'cid': p.cid} for p in Procedimento.query.order_by(Procedimento.nome).all()]
     return_context = build_enfermagem_return_params(registro=registro, source=request.args)
 
     if request.method == 'POST':
-        nome_colaborador = request.form.get('nome_colaborador', '').strip()
-        nome_medico = request.form.get('nome_medico', '').strip()
-        procedimento_name = request.form.get('procedimento', '').strip()
-        submitted_crm = request.form.get('crm_medico', '').strip()
-        submitted_cid = request.form.get('cid_procedimento', '').strip()
+        submitted_date = request.form.get('data', '').strip()
+        if not submitted_date:
+            flash('Preencha a data do registro.')
+            return render_template('enfermagem_edit.html', registro=registro, return_context=build_enfermagem_return_params(registro=registro, source=request.form))
 
-        if not nome_colaborador or not nome_medico or not procedimento_name:
-            flash('Preencha colaborador, médico e procedimento.')
-            return render_template('enfermagem_edit.html', registro=registro, medicos=medicos, procedimentos=procedimentos, return_context=build_enfermagem_return_params(registro=registro, source=request.form))
-
-        registro.nome_colaborador = nome_colaborador
-        registro.nome_medico = nome_medico
-        registro.crm_medico = resolve_medico_crm(nome_medico, submitted_crm)
-        registro.procedimento = procedimento_name
-        registro.cid_procedimento = resolve_procedimento_cid(procedimento_name, submitted_cid)
-        registro.data = datetime.strptime(request.form['data'], '%Y-%m-%d').date()
+        registro.data = datetime.strptime(submitted_date, '%Y-%m-%d').date()
         registro.observacao = request.form.get('observacao', '')
         db.session.commit()
         return redirect(url_for('enfermagem', **build_enfermagem_return_params(registro=registro, source=request.form)))
 
-    return render_template('enfermagem_edit.html', registro=registro, medicos=medicos, procedimentos=procedimentos, return_context=return_context)
+    return render_template('enfermagem_edit.html', registro=registro, return_context=return_context)
 
 @app.route('/enfermagem/delete/<int:id>')
 def enfermagem_delete(id):

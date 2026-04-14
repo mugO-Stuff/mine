@@ -33,10 +33,9 @@
             <div class="appointments-list">
                 {% if regs %}
                     {% for reg in regs %}
-                        <div class="appointment" data-colaborador="{{ reg.nome_colaborador }}" data-medico="{{ reg.nome_medico }}" data-crm="{{ reg.crm_medico }}" data-procedimento="{{ reg.procedimento }}" data-cid="{{ reg.cid_procedimento }}" data-observacao="{{ reg.observacao or '-' }}">
-                            <p><strong>{{ reg.nome_colaborador }}</strong></p>
-                            <p>{{ reg.nome_medico }} | CRM {{ reg.crm_medico }}</p>
-                            <p>{{ reg.procedimento }}</p>
+                        <div class="appointment" data-observacao="{{ reg.observacao or '-' }}">
+                            <p><strong>Observação</strong></p>
+                            <p>{{ reg.observacao or 'Sem observações.' }}</p>
                             <div class="appointment-actions">
                                 <a href="{{ url_for('enfermagem_edit', id=reg.id, year=year, month=month) }}">Editar</a>
                                 <a href="{{ url_for('enfermagem_delete', id=reg.id, year=year, month=month) }}" onclick="return confirm('Excluir registro de enfermagem?')">Excluir</a>
@@ -83,11 +82,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 items.forEach(function(itemSource) {
                     const item = document.createElement('div');
                     item.className = 'modal-appointment';
-                    item.innerHTML =
-                        '<h4>' + itemSource.dataset.colaborador + '</h4>' +
-                        '<p><strong>Médico:</strong> ' + itemSource.dataset.medico + ' | <strong>CRM:</strong> ' + itemSource.dataset.crm + '</p>' +
-                        '<p><strong>Procedimento:</strong> ' + itemSource.dataset.procedimento + ' | <strong>CID:</strong> ' + itemSource.dataset.cid + '</p>' +
-                        '<p><strong>Observação:</strong> ' + itemSource.dataset.observacao + '</p>';
+                    item.innerHTML = '<p><strong>Observação:</strong> ' + itemSource.dataset.observacao + '</p>';
                     modalBody.appendChild(item);
                 });
             }
