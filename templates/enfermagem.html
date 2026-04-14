@@ -38,7 +38,10 @@
                             <p>{{ reg.observacao or 'Sem observações.' }}</p>
                             <div class="appointment-actions">
                                 <a href="{{ url_for('enfermagem_edit', id=reg.id, year=year, month=month) }}">Editar</a>
-                                <a href="{{ url_for('enfermagem_delete', id=reg.id, year=year, month=month) }}" onclick="return confirm('Excluir registro de enfermagem?')">Excluir</a>
+                                <form method="post" action="{{ url_for('enfermagem_delete', id=reg.id, year=year, month=month) }}" style="display:inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="action-link reject" onclick="return confirm('Excluir registro de enfermagem?')">Excluir</button>
+                                </form>
                             </div>
                         </div>
                     {% endfor %}

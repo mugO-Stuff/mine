@@ -22,8 +22,14 @@
                     <li>
                         <span>{{ user.nome }} - {{ user.cargo }}</span>
                         <div class="button-group">
-                            <a class="action-link" href="{{ url_for('approve', user_id=user.id) }}">Aprovar</a>
-                            <a class="action-link reject" href="{{ url_for('reject', user_id=user.id) }}">Rejeitar</a>
+                            <form method="post" action="{{ url_for('approve', user_id=user.id) }}" style="display:inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="action-link">Aprovar</button>
+                            </form>
+                            <form method="post" action="{{ url_for('reject', user_id=user.id) }}" style="display:inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="action-link reject">Rejeitar</button>
+                            </form>
                         </div>
                     </li>
                 {% endfor %}
@@ -116,7 +122,10 @@
                         <span style="background-color: {{ medico.cor }}; color: white; padding: 2px 4px; border-radius: 3px;">{{ medico.nome }}</span> - CRM {{ medico.crm }}
                         <div class="button-group">
                             <a class="action-link" href="{{ url_for('edit_medico', medico_id=medico.id) }}">Editar</a>
-                            <a class="action-link reject" href="{{ url_for('delete_medico', medico_id=medico.id) }}">Excluir</a>
+                            <form method="post" action="{{ url_for('delete_medico', medico_id=medico.id) }}" style="display:inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="action-link reject" onclick="return confirm('Tem certeza que deseja excluir este médico?')">Excluir</button>
+                            </form>
                         </div>
                     </li>
                 {% endfor %}

@@ -1202,7 +1202,7 @@ def edit_medico(medico_id):
         return redirect(url_for('admin'))
     return render_template('edit_medico.html', medico=medico)
 
-@app.route('/admin/delete_medico/<int:medico_id>')
+@app.route('/admin/delete_medico/<int:medico_id>', methods=['POST'])
 def delete_medico(medico_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -1237,7 +1237,7 @@ def add_procedimento():
     db.session.commit()
     return redirect(url_for('admin'))
 
-@app.route('/approve/<int:user_id>')
+@app.route('/approve/<int:user_id>', methods=['POST'])
 def approve(user_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -1303,7 +1303,7 @@ def set_user_levels_bulk():
         flash(f'{updated_count} nível(is) de acesso atualizado(s).')
     return redirect(url_for('admin'))
 
-@app.route('/reject/<int:user_id>')
+@app.route('/reject/<int:user_id>', methods=['POST'])
 def reject(user_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -1390,7 +1390,7 @@ def edit(id):
         return redirect_to_agendamento_month(agendamento, view='calendar')
     return render_template('edit.html', agendamento=agendamento, medicos=medicos, procedimentos=procedimentos, return_context=return_context)
 
-@app.route('/delete/<int:id>')
+@app.route('/delete/<int:id>', methods=['POST'])
 def delete(id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
@@ -1860,7 +1860,7 @@ def enfermagem_edit(id):
 
     return render_template('enfermagem_edit.html', registro=registro, return_context=return_context)
 
-@app.route('/enfermagem/delete/<int:id>')
+@app.route('/enfermagem/delete/<int:id>', methods=['POST'])
 def enfermagem_delete(id):
     if 'user_id' not in session:
         return redirect(url_for('login'))

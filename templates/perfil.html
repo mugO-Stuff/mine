@@ -25,12 +25,6 @@
 
     <section class="perfil-card">
         <h3>Senha</h3>
-        <form class="perfil-form">
-            <label for="senha_atual_visual">Visualizar Senha Atual</label>
-            <input type="password" id="senha_atual_visual" value="{{ user.senha }}" readonly>
-            <button type="button" id="toggle-senha" class="secondary-btn">Visualizar</button>
-        </form>
-
         <form method="post" class="perfil-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="action" value="senha">
@@ -60,17 +54,4 @@
         {% endif %}
     {% endwith %}
 </div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const inputSenha = document.getElementById('senha_atual_visual');
-        const toggle = document.getElementById('toggle-senha');
-
-        toggle.addEventListener('click', function () {
-            const mostrando = inputSenha.type === 'text';
-            inputSenha.type = mostrando ? 'password' : 'text';
-            toggle.textContent = mostrando ? 'Visualizar' : 'Ocultar';
-        });
-    });
-</script>
 {% endblock %}

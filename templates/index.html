@@ -137,7 +137,10 @@
                                         <a href="{{ url_for('internacao', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}" class="internalacao-btn {% if appt.data <= today and (not appt.sala_cirurgica or not appt.quarto) %}pending{% endif %}">Internação{% if appt.data <= today and (not appt.sala_cirurgica or not appt.quarto) %} ?{% endif %}</a>
                                         <a href="{{ url_for('edit', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}">Editar</a>
                                         <a href="{{ url_for('paciente', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}">Editar Perfil</a>
-                                        <a href="{{ url_for('delete', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}">Excluir</a>
+                                        <form method="post" action="{{ url_for('delete', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}" class="inline-action-form">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="cancel-surgery-btn" onclick="return confirm('Tem certeza que deseja excluir este agendamento?')">Excluir</button>
+                                        </form>
                                     </div>
                                 {% endif %}
                             </div>
@@ -278,16 +281,28 @@
                                 item.appendChild(editBtn);
                             }
                             if (appt.dataset.deleteUrl) {
-                                const deleteBtn = document.createElement('a');
-                                deleteBtn.href = appt.dataset.deleteUrl;
-                                deleteBtn.className = 'internalacao-btn pending';
+                                const deleteForm = document.createElement('form');
+                                deleteForm.method = 'post';
+                                deleteForm.action = appt.dataset.deleteUrl;
+                                deleteForm.className = 'inline-action-form';
+
+                                const deleteCsrf = document.createElement('input');
+                                deleteCsrf.type = 'hidden';
+                                deleteCsrf.name = 'csrf_token';
+                                deleteCsrf.value = '{{ csrf_token() }}';
+                                deleteForm.appendChild(deleteCsrf);
+
+                                const deleteBtn = document.createElement('button');
+                                deleteBtn.type = 'submit';
+                                deleteBtn.className = 'cancel-surgery-btn';
                                 deleteBtn.textContent = 'Excluir';
                                 deleteBtn.addEventListener('click', function(event) {
                                     if (!confirm('Tem certeza que deseja excluir este agendamento?')) {
                                         event.preventDefault();
                                     }
                                 });
-                                item.appendChild(deleteBtn);
+                                deleteForm.appendChild(deleteBtn);
+                                item.appendChild(deleteForm);
                             }
                             if (appt.dataset.pacienteUrl) {
                                 const perfilBtn = document.createElement('a');
@@ -385,7 +400,10 @@
                                     <a href="{{ url_for('internacao', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}" class="internalacao-btn {% if appt.data <= today and (not appt.sala_cirurgica or not appt.quarto) %}pending{% endif %}">Internação{% if appt.data <= today and (not appt.sala_cirurgica or not appt.quarto) %} ?{% endif %}</a>
                                     <a href="{{ url_for('edit', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}">Editar</a>
                                     <a href="{{ url_for('paciente', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}">Editar Perfil</a>
-                                    <a href="{{ url_for('delete', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}">Excluir</a>
+                                    <form method="post" action="{{ url_for('delete', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}" class="inline-action-form">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="cancel-surgery-btn" onclick="return confirm('Tem certeza que deseja excluir este agendamento?')">Excluir</button>
+                                    </form>
 
                                     <button type="button" class="mobile-toggle" data-target="mobile-actions-{{ appt.id }}">Mais</button>
                                     <button type="button" class="mobile-toggle" data-target="mobile-info-{{ appt.id }}">Mais informações</button>
@@ -394,7 +412,10 @@
                                         <a href="{{ url_for('internacao', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}">Internação</a>
                                         <a href="{{ url_for('edit', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}">Editar</a>
                                         <a href="{{ url_for('paciente', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}">Editar Perfil</a>
-                                        <a href="{{ url_for('delete', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}">Excluir</a>
+                                        <form method="post" action="{{ url_for('delete', id=appt.id, year=year, month=month, view=view_mode, medico=doctor_filter, protocolo=protocol_filter, paciente_busca=calendar_search) }}" class="inline-action-form">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="cancel-surgery-btn" onclick="return confirm('Tem certeza que deseja excluir este agendamento?')">Excluir</button>
+                                        </form>
                                     </div>
 
                                     <div id="mobile-info-{{ appt.id }}" class="mobile-info-panel">
