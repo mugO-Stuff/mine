@@ -541,7 +541,15 @@ def ensure_sqlite_legacy_columns():
         if comprovante_columns and 'arquivo_comprovante' not in comprovante_columns:
             conn.execute(text("ALTER TABLE comprovante ADD COLUMN arquivo_comprovante VARCHAR(255)"))
         if comprovante_columns and 'arquivo_comprovante_dados' not in comprovante_columns:
-            conn.execute(text("ALTER TABLE comprovante ADD COLUMN arquivo_comprovante_dados LONGBLOB"))
+            # Use BYTEA for PostgreSQL, LONGBLOB for MySQL, BLOB for SQLite
+            dialect = db.engine.dialect.name.lower()
+            if 'postgres' in dialect:
+                binary_type = 'BYTEA'
+            elif 'mysql' in dialect:
+                binary_type = 'LONGBLOB'
+            else:  # sqlite
+                binary_type = 'BLOB'
+            conn.execute(text(f"ALTER TABLE comprovante ADD COLUMN arquivo_comprovante_dados {binary_type}"))
 
 def ensure_admin_user(update_password=False):
     admin = User.query.filter_by(nome=DEFAULT_ADMIN_NAME).order_by(User.id).first()
