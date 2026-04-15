@@ -1059,6 +1059,30 @@ def chat_messages():
 
     return jsonify({'ok': True, 'messages': payload})
 
+@app.route('/api/chat/status')
+def chat_status():
+    if 'user_id' not in session:
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    cleanup_old_chat_messages()
+
+    last_read_id = request.args.get('last_read_id', 0, type=int)
+    if last_read_id < 0:
+        last_read_id = 0
+
+    latest_id = db.session.query(func.max(ChatMessage.id)).scalar() or 0
+    unread_count = ChatMessage.query.filter(
+        ChatMessage.id > last_read_id,
+        ChatMessage.sender_id != session.get('user_id')
+    ).count()
+
+    return jsonify({
+        'ok': True,
+        'latest_id': latest_id,
+        'has_unread': unread_count > 0,
+        'unread_count': unread_count,
+    })
+
 @app.route('/api/chat/send', methods=['POST'])
 def chat_send():
     if 'user_id' not in session:

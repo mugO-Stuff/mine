@@ -15,7 +15,7 @@ main {
     width: 100%;
     text-align: center;
     padding: 1rem 0 0.5rem 0;
-    font-size: 0.98rem;
+    font-size: 0.99rem;
     color: #00695c;
     background: #e0f2f1;
     flex-shrink: 0;
@@ -336,6 +336,15 @@ header h1 {
 .chat-fab.dragging {
     opacity: 0.92;
     box-shadow: 0 10px 26px rgba(0, 77, 64, 0.38);
+}
+
+.chat-fab.chat-fab-unread {
+    background: #c62828;
+    box-shadow: 0 10px 26px rgba(198, 40, 40, 0.45);
+}
+
+.chat-fab.chat-fab-unread:hover {
+    background: #b71c1c;
 }
 
 .legend-modal {

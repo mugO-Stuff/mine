@@ -231,6 +231,63 @@
         });
       })();
 
+      (function initChatFabUnreadIndicator() {
+        const fab = document.getElementById('chat-fab');
+        if (!fab) return;
+
+        const readKey = 'chatLastReadId';
+        const chatPath = '{{ url_for("chat") }}';
+        const isChatPage = window.location.pathname === chatPath;
+        let lastReadId = parseInt(localStorage.getItem(readKey) || '0', 10);
+        if (Number.isNaN(lastReadId) || lastReadId < 0) {
+          lastReadId = 0;
+        }
+
+        function setUnreadState(hasUnread) {
+          fab.classList.toggle('chat-fab-unread', Boolean(hasUnread));
+        }
+
+        function persistLastReadId(newId) {
+          const parsed = Number(newId) || 0;
+          if (parsed > lastReadId) {
+            lastReadId = parsed;
+            localStorage.setItem(readKey, String(lastReadId));
+          }
+        }
+
+        function fetchStatus() {
+          fetch('/api/chat/status?last_read_id=' + encodeURIComponent(lastReadId))
+            .then(function(resp) {
+              if (!resp.ok) {
+                throw new Error('status_error');
+              }
+              return resp.json();
+            })
+            .then(function(data) {
+              if (!data.ok) return;
+
+              const latestId = Number(data.latest_id) || 0;
+              if (isChatPage) {
+                persistLastReadId(latestId);
+                setUnreadState(false);
+                return;
+              }
+
+              setUnreadState(Boolean(data.has_unread));
+            })
+            .catch(function() {
+              // Falha silenciosa para nao interromper a navegacao.
+            });
+        }
+
+        fab.addEventListener('click', function() {
+          setUnreadState(false);
+        });
+
+        fetchStatus();
+        setInterval(fetchStatus, 4000);
+      })();
+
       function urlBase64ToUint8Array(base64String) {
         const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
         const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
