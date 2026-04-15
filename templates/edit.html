@@ -14,6 +14,9 @@
     <label for="agendamento_id">ID do Agendamento:</label>
     <input type="text" id="agendamento_id" value="{{ agendamento.id }}" readonly>
     {% endif %}
+    <label for="protocolo">Protocolo:</label>
+    <input type="text" id="protocolo" name="protocolo" value="{{ agendamento.protocolo if agendamento else '' }}" placeholder="Digite o protocolo do paciente">
+    <p class="form-helper-text">Se o protocolo existe, o nome e telefone do paciente serao preenchidos automaticamente.</p>
     <label for="nome_paciente">Nome do Paciente:</label>
     <input type="text" id="nome_paciente" name="nome_paciente" value="{{ agendamento.nome_paciente if agendamento else '' }}" required>
     <label for="whatsapp_paciente">Telefone do Paciente:</label>
@@ -41,6 +44,9 @@
     const crmInput = document.getElementById('crm_medico');
     const procedimentoInput = document.getElementById('procedimento');
     const cidInput = document.getElementById('cid_procedimento');
+    const protocoloInput = document.getElementById('protocolo');
+    const nomePacienteInput = document.getElementById('nome_paciente');
+    const whatsappInput = document.getElementById('whatsapp_paciente');
 
     function findMedico(nome) {
         return medicos.find(m => m.nome.toLowerCase().trim() === nome.toLowerCase().trim());
@@ -49,6 +55,31 @@
     function findProcedimento(nome) {
         return procedimentos.find(p => p.nome.toLowerCase().trim() === nome.toLowerCase().trim());
     }
+
+    protocoloInput.addEventListener('blur', () => {
+        const protocolo = (protocoloInput.value || '').trim().toUpperCase();
+        if (!protocolo) {
+            return;
+        }
+
+        fetch('/api/paciente-por-protocolo?protocolo=' + encodeURIComponent(protocolo))
+            .then(function(response) {
+                if (!response.ok) {
+                    throw new Error('not_found');
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                if (!data.ok) {
+                    throw new Error('invalid');
+                }
+                nomePacienteInput.value = data.nome_paciente || '';
+                whatsappInput.value = data.whatsapp_paciente || '';
+            })
+            .catch(function() {
+                // Silenciosamente ignora se protocolo nao encontrado
+            });
+    });
 
     nomeMedicoInput.addEventListener('blur', () => {
         const medico = findMedico(nomeMedicoInput.value);

@@ -1439,7 +1439,8 @@ def create():
             cid_procedimento=cid_val,
             data=datetime.strptime(request.form['data'], '%Y-%m-%d').date(),
             hora=datetime.strptime(request.form['hora'], '%H:%M').time(),
-            observacao=request.form['observacao']
+            observacao=request.form['observacao'],
+            protocolo=request.form.get('protocolo', '').strip().upper() or None
         )
         db.session.add(agendamento)
         db.session.flush()
@@ -1478,6 +1479,7 @@ def edit(id):
         agendamento.data = datetime.strptime(request.form['data'], '%Y-%m-%d').date()
         agendamento.hora = datetime.strptime(request.form['hora'], '%H:%M').time()
         agendamento.observacao = request.form['observacao']
+        agendamento.protocolo = request.form.get('protocolo', '').strip().upper() or None
         db.session.commit()
         return redirect_to_agendamento_month(agendamento, view='calendar')
     return render_template('edit.html', agendamento=agendamento, medicos=medicos, procedimentos=procedimentos, return_context=return_context)
@@ -1815,6 +1817,25 @@ def api_agendamento_por_procedimento():
         'nome_medico': agendamento.nome_medico,
         'procedimento': agendamento.procedimento,
         'data_cirurgia': agendamento.data.strftime('%Y-%m-%d'),
+    })
+
+@app.route('/api/paciente-por-protocolo')
+def api_paciente_por_protocolo():
+    if 'user_id' not in session:
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    protocolo = request.args.get('protocolo', '').strip().upper()
+    if not protocolo:
+        return jsonify({'ok': False, 'error': 'missing_protocolo'}), 400
+
+    agendamento = Agendamento.query.filter_by(protocolo=protocolo).order_by(Agendamento.id.desc()).first()
+    if not agendamento:
+        return jsonify({'ok': False, 'error': 'not_found'}), 404
+
+    return jsonify({
+        'ok': True,
+        'nome_paciente': agendamento.nome_paciente,
+        'whatsapp_paciente': agendamento.whatsapp_paciente or '',
     })
 
 @app.route('/pacientes')
