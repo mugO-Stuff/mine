@@ -2293,7 +2293,7 @@ button:hover {
 }
 
 .chat-messages {
-    background: #ffffff;
+    background: #ece5dd;
     border: 1px solid #b2dfdb;
     border-radius: 10px;
     min-height: 380px;
@@ -2305,15 +2305,42 @@ button:hover {
 }
 
 .chat-message {
-    background: #eef7f4;
-    border: 1px solid #d8ece6;
-    border-radius: 8px;
-    padding: 0.55rem 0.65rem;
+    background: #ffffff;
+    border: 1px solid #e4e4e4;
+    border-radius: 10px;
+    padding: 0.55rem 0.7rem;
+    max-width: 78%;
+    justify-self: start;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+    position: relative;
+    margin-left: 10px;
 }
 
 .chat-message.mine {
-    background: #d7eee9;
-    border-color: #b7ddd4;
+    background: #dcf8c6;
+    border-color: #cce6b8;
+    justify-self: end;
+    margin-left: 0;
+    margin-right: 10px;
+}
+
+.chat-message::before {
+    content: '';
+    position: absolute;
+    left: -9px;
+    top: 10px;
+    width: 0;
+    height: 0;
+    border-top: 7px solid transparent;
+    border-bottom: 7px solid transparent;
+    border-right: 8px solid #ffffff;
+}
+
+.chat-message.mine::before {
+    left: auto;
+    right: -9px;
+    border-right: 0;
+    border-left: 8px solid #dcf8c6;
 }
 
 .chat-meta {
@@ -2326,7 +2353,19 @@ button:hover {
 
 .chat-meta span {
     font-size: 0.78rem;
-    color: #607d78;
+    color: #6f7f86;
+}
+
+.chat-message.mine .chat-meta {
+    justify-content: flex-end;
+}
+
+.chat-message.mine .chat-meta strong {
+    color: #245a31;
+}
+
+.chat-message.mine .chat-meta span {
+    margin-left: 0.55rem;
 }
 
 .chat-message p {
@@ -2351,6 +2390,15 @@ button:hover {
 }
 
 @media (max-width: 560px) {
+    .chat-message {
+        max-width: 88%;
+        margin-left: 8px;
+    }
+
+    .chat-message.mine {
+        margin-right: 8px;
+    }
+
     .chat-form {
         grid-template-columns: 1fr;
     }
