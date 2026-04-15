@@ -53,6 +53,7 @@ VAPID_PUBLIC_KEY = os.environ.get('VAPID_PUBLIC_KEY', '')
 VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
 VAPID_CLAIMS_SUB = os.environ.get('VAPID_CLAIMS_SUB', 'mailto:admin@agendadia.local')
 PUSH_DISPATCH_TOKEN = os.environ.get('PUSH_DISPATCH_TOKEN', '')
+REALTIME_EVENT_RETENTION = int(os.environ.get('REALTIME_EVENT_RETENTION', '800'))
 
 # Models
 class User(db.Model):
@@ -183,6 +184,13 @@ class ChatMessage(db.Model):
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     sender = db.relationship('User', backref='chat_messages', lazy='joined')
+
+class RealtimeEvent(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    event_type = db.Column(db.String(64), nullable=False, index=True)
+    actor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True, index=True)
+    payload = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
 @app.context_processor
 def inject_user():
@@ -642,6 +650,33 @@ def cleanup_old_chat_messages():
     ChatMessage.query.filter(ChatMessage.created_at < cutoff).delete(synchronize_session=False)
     db.session.commit()
 
+def emit_realtime_event(event_type, actor_id=None, payload=None):
+    event_name = (event_type or '').strip()[:64]
+    if not event_name:
+        return None
+
+    payload_json = None
+    if payload:
+        try:
+            payload_json = json.dumps(payload, ensure_ascii=False)
+        except Exception:
+            payload_json = None
+
+    event = RealtimeEvent(
+        event_type=event_name,
+        actor_id=actor_id,
+        payload=payload_json,
+    )
+    db.session.add(event)
+    db.session.flush()
+
+    if REALTIME_EVENT_RETENTION > 0:
+        threshold_id = event.id - REALTIME_EVENT_RETENTION
+        if threshold_id > 0:
+            RealtimeEvent.query.filter(RealtimeEvent.id <= threshold_id).delete(synchronize_session=False)
+
+    return event
+
 def notify_chat_message(message):
     sender_name = message.sender.nome if message.sender else 'Usuário'
     payload = {
@@ -1083,6 +1118,36 @@ def chat_status():
         'unread_count': unread_count,
     })
 
+@app.route('/api/realtime/status')
+def realtime_status():
+    if 'user_id' not in session:
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+
+    after_id = request.args.get('after_id', 0, type=int)
+    if after_id < 0:
+        after_id = 0
+
+    latest_id = db.session.query(func.max(RealtimeEvent.id)).scalar() or 0
+    events = []
+
+    if latest_id > after_id:
+        recent = RealtimeEvent.query.filter(RealtimeEvent.id > after_id).order_by(RealtimeEvent.id.asc()).limit(60).all()
+        events = [
+            {
+                'id': ev.id,
+                'type': ev.event_type,
+                'actor_id': ev.actor_id,
+                'created_at': ev.created_at.strftime('%d/%m/%Y %H:%M:%S') if ev.created_at else '',
+            }
+            for ev in recent
+        ]
+
+    return jsonify({
+        'ok': True,
+        'latest_id': latest_id,
+        'events': events,
+    })
+
 @app.route('/api/chat/send', methods=['POST'])
 def chat_send():
     if 'user_id' not in session:
@@ -1101,6 +1166,11 @@ def chat_send():
         content=content,
     )
     db.session.add(message)
+    emit_realtime_event(
+        'chat_message',
+        actor_id=session.get('user_id'),
+        payload={'message_preview': content[:80]},
+    )
     db.session.commit()
     notify_chat_message(message)
 
@@ -1469,6 +1539,7 @@ def create():
         db.session.add(agendamento)
         db.session.flush()
         agendamento.numero_procedimento = build_numero_procedimento(agendamento.id)
+        emit_realtime_event('agendamento_created', actor_id=session.get('user_id'), payload={'agendamento_id': agendamento.id})
         db.session.commit()
         return redirect_to_agendamento_month(agendamento, view='calendar')
     return render_template('edit.html', agendamento=None, medicos=medicos, procedimentos=procedimentos, selected_date=selected_date, return_context=return_context)
@@ -1504,6 +1575,7 @@ def edit(id):
         agendamento.hora = datetime.strptime(request.form['hora'], '%H:%M').time()
         agendamento.observacao = request.form['observacao']
         agendamento.protocolo = request.form.get('protocolo', '').strip().upper() or None
+        emit_realtime_event('agendamento_updated', actor_id=session.get('user_id'), payload={'agendamento_id': agendamento.id})
         db.session.commit()
         return redirect_to_agendamento_month(agendamento, view='calendar')
     return render_template('edit.html', agendamento=agendamento, medicos=medicos, procedimentos=procedimentos, return_context=return_context)
@@ -1517,6 +1589,7 @@ def delete(id):
         flash('Acesso negado')
         return redirect(url_for('index'))
     agendamento = Agendamento.query.get_or_404(id)
+    emit_realtime_event('agendamento_deleted', actor_id=session.get('user_id'), payload={'agendamento_id': agendamento.id})
     db.session.delete(agendamento)
     db.session.commit()
     return redirect_to_agendamento_month(agendamento, view='calendar')
@@ -1538,6 +1611,7 @@ def confirmar_cirurgia(id):
 
     agendamento.cirurgia_confirmada = True
     agendamento.cirurgia_cancelada = False
+    emit_realtime_event('cirurgia_confirmada', actor_id=session.get('user_id'), payload={'agendamento_id': agendamento.id})
     db.session.commit()
     flash('Cirurgia confirmada com sucesso.')
     return redirect_to_agendamento_month(agendamento, view='calendar')
@@ -1559,6 +1633,7 @@ def cancelar_cirurgia(id):
 
     agendamento.cirurgia_cancelada = True
     agendamento.cirurgia_confirmada = False
+    emit_realtime_event('cirurgia_cancelada', actor_id=session.get('user_id'), payload={'agendamento_id': agendamento.id})
     db.session.commit()
     flash('Cirurgia cancelada com sucesso.')
     return redirect_to_agendamento_month(agendamento, view='calendar')
@@ -1582,6 +1657,7 @@ def internacao(id):
         agendamento.protocolo = protocolo_informado
         agendamento.sala_cirurgica = request.form.get('sala_cirurgica', '').strip() or None
         agendamento.quarto = request.form.get('quarto', '').strip() or None
+        emit_realtime_event('internacao_updated', actor_id=session.get('user_id'), payload={'agendamento_id': agendamento.id})
         db.session.commit()
         flash('Dados de internação atualizados.')
         return redirect_to_agendamento_month(agendamento, view='calendar')
@@ -1626,6 +1702,7 @@ def paciente(id):
 
             for item in agendamentos_paciente:
                 item.protocolo = protocolo_informado
+            emit_realtime_event('paciente_protocolo_updated', actor_id=session.get('user_id'), payload={'agendamento_id': agendamento.id})
             db.session.commit()
             flash('Protocolo atualizado com sucesso para este paciente.')
             return redirect(url_for('paciente', id=agendamento.id, **build_paciente_return_params(agendamento=agendamento, source=request.form)))
@@ -1634,6 +1711,7 @@ def paciente(id):
             whatsapp_informado = request.form.get('whatsapp_paciente', '').strip() or None
             for item in agendamentos_paciente:
                 item.whatsapp_paciente = whatsapp_informado
+            emit_realtime_event('paciente_whatsapp_updated', actor_id=session.get('user_id'), payload={'agendamento_id': agendamento.id})
             db.session.commit()
             flash('Telefone do paciente atualizado com sucesso.')
             return redirect(url_for('paciente', id=agendamento.id, **build_paciente_return_params(agendamento=agendamento, source=request.form)))
@@ -1716,6 +1794,7 @@ def paciente(id):
         for item_duplicado in duplicados[1:]:
             db.session.delete(item_duplicado)
 
+        emit_realtime_event('pagamento_updated', actor_id=session.get('user_id'), payload={'agendamento_id': agendamento_pagamento.id})
         db.session.commit()
         flash('Pagamento da cirurgia vinculado com sucesso.')
         redirect_params = build_paciente_return_params(agendamento=agendamento_pagamento, source=request.form)
@@ -1803,6 +1882,7 @@ def editar_comprovante(comprovante_id):
             comprovante.arquivo_comprovante = arquivo_nome
             comprovante.arquivo_comprovante_dados = arquivo_dados
 
+        emit_realtime_event('comprovante_updated', actor_id=session.get('user_id'), payload={'agendamento_id': agendamento.id})
         db.session.commit()
         flash('Comprovante atualizado com sucesso.')
         redirect_params = build_paciente_return_params(agendamento=agendamento, source=request.form)
@@ -2035,6 +2115,8 @@ def enfermagem_create():
             created_by=session.get('user_id'),
         )
         db.session.add(registro)
+        db.session.flush()
+        emit_realtime_event('enfermagem_created', actor_id=session.get('user_id'), payload={'registro_id': registro.id})
         db.session.commit()
         return redirect(url_for('enfermagem', **build_enfermagem_return_params(registro=registro, source=request.form)))
 
@@ -2056,6 +2138,7 @@ def enfermagem_edit(id):
 
         registro.data = datetime.strptime(submitted_date, '%Y-%m-%d').date()
         registro.observacao = request.form.get('observacao', '')
+        emit_realtime_event('enfermagem_updated', actor_id=session.get('user_id'), payload={'registro_id': registro.id})
         db.session.commit()
         return redirect(url_for('enfermagem', **build_enfermagem_return_params(registro=registro, source=request.form)))
 
@@ -2067,6 +2150,7 @@ def enfermagem_delete(id):
         return redirect(url_for('login'))
 
     registro = EnfermagemRegistro.query.get_or_404(id)
+    emit_realtime_event('enfermagem_deleted', actor_id=session.get('user_id'), payload={'registro_id': registro.id})
     db.session.delete(registro)
     db.session.commit()
     return redirect(url_for('enfermagem', **build_enfermagem_return_params(registro=registro, source=request.args)))
@@ -2148,6 +2232,7 @@ def anestesista_set():
         escala = EscalaAnestesista(data=dia, nome=nome, updated_by=user.id)
         db.session.add(escala)
 
+    emit_realtime_event('anestesista_updated', actor_id=session.get('user_id'), payload={'escala_data': dia.strftime('%Y-%m-%d')})
     db.session.commit()
     return redirect(url_for('anestesistas', year=year, month=month))
 
@@ -2166,6 +2251,7 @@ def anestesista_delete(escala_id):
     escala = EscalaAnestesista.query.get_or_404(escala_id)
     year = escala.data.year
     month = escala.data.month
+    emit_realtime_event('anestesista_deleted', actor_id=session.get('user_id'), payload={'escala_data': escala.data.strftime('%Y-%m-%d')})
     db.session.delete(escala)
     db.session.commit()
     return redirect(url_for('anestesistas', year=year, month=month))

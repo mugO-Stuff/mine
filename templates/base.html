@@ -288,6 +288,188 @@
         setInterval(fetchStatus, 4000);
       })();
 
+      (function initRealtimePageSync() {
+        const statusUrl = '/api/realtime/status';
+        const realtimePath = '{{ url_for("chat") }}';
+        const isChatPage = window.location.pathname === realtimePath;
+        const pollIntervalMs = 2500;
+        const storageKey = 'agendadiaRealtimeLastEventId';
+        let lastEventId = parseInt(localStorage.getItem(storageKey) || '0', 10);
+        if (Number.isNaN(lastEventId) || lastEventId < 0) {
+          lastEventId = 0;
+        }
+
+        let pendingReload = false;
+        let isRequestRunning = false;
+        let bannerEl = null;
+
+        function markFormsDirty() {
+          const forms = document.querySelectorAll('form');
+          forms.forEach(function(form) {
+            const markDirty = function() {
+              form.setAttribute('data-realtime-dirty', '1');
+            };
+            form.addEventListener('input', markDirty);
+            form.addEventListener('change', markDirty);
+            form.addEventListener('submit', function() {
+              form.removeAttribute('data-realtime-dirty');
+            });
+          });
+        }
+
+        function isUserEditingNow() {
+          if (document.querySelector('form[data-realtime-dirty="1"]')) {
+            return true;
+          }
+
+          const active = document.activeElement;
+          if (!active || active === document.body) {
+            return false;
+          }
+
+          if (active.matches('input, textarea, select, [contenteditable="true"]')) {
+            return true;
+          }
+
+          return false;
+        }
+
+        function canReloadNow() {
+          return document.visibilityState === 'visible' && !isUserEditingNow();
+        }
+
+        function createBanner() {
+          if (bannerEl) {
+            return bannerEl;
+          }
+
+          bannerEl = document.createElement('div');
+          bannerEl.id = 'realtime-refresh-banner';
+          bannerEl.style.position = 'fixed';
+          bannerEl.style.left = '50%';
+          bannerEl.style.bottom = '18px';
+          bannerEl.style.transform = 'translateX(-50%)';
+          bannerEl.style.background = '#0d47a1';
+          bannerEl.style.color = '#fff';
+          bannerEl.style.padding = '10px 14px';
+          bannerEl.style.borderRadius = '10px';
+          bannerEl.style.display = 'none';
+          bannerEl.style.zIndex = '9999';
+          bannerEl.style.fontSize = '14px';
+          bannerEl.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.22)';
+          bannerEl.innerHTML = 'Existe uma atualização nova. <button type="button" style="margin-left:8px;padding:5px 10px;border:0;border-radius:6px;background:#fff;color:#0d47a1;font-weight:700;cursor:pointer;">Atualizar agora</button>';
+
+          bannerEl.querySelector('button').addEventListener('click', function() {
+            window.location.reload();
+          });
+
+          document.body.appendChild(bannerEl);
+          return bannerEl;
+        }
+
+        function showBanner() {
+          createBanner().style.display = 'block';
+        }
+
+        function hideBanner() {
+          if (bannerEl) {
+            bannerEl.style.display = 'none';
+          }
+        }
+
+        function persistLastEventId(id) {
+          const parsed = Number(id) || 0;
+          if (parsed > lastEventId) {
+            lastEventId = parsed;
+            localStorage.setItem(storageKey, String(lastEventId));
+          }
+        }
+
+        function shouldReloadForEvents(events) {
+          if (!Array.isArray(events) || !events.length) {
+            return false;
+          }
+
+          const hasNonChatEvent = events.some(function(ev) {
+            return ev && ev.type && ev.type !== 'chat_message';
+          });
+
+          if (isChatPage && !hasNonChatEvent) {
+            window.dispatchEvent(new CustomEvent('agendadia:chat-updated', { detail: events }));
+            return false;
+          }
+
+          return true;
+        }
+
+        function applyPendingReloadIfPossible() {
+          if (!pendingReload) {
+            return;
+          }
+
+          if (canReloadNow()) {
+            window.location.reload();
+            return;
+          }
+
+          showBanner();
+        }
+
+        function pollRealtimeStatus() {
+          if (isRequestRunning) {
+            return;
+          }
+
+          isRequestRunning = true;
+          fetch(statusUrl + '?after_id=' + encodeURIComponent(lastEventId))
+            .then(function(resp) {
+              if (!resp.ok) {
+                throw new Error('realtime_status_failed');
+              }
+              return resp.json();
+            })
+            .then(function(data) {
+              if (!data.ok) {
+                return;
+              }
+
+              persistLastEventId(data.latest_id);
+
+              const hasEvents = Array.isArray(data.events) && data.events.length > 0;
+              if (!hasEvents) {
+                applyPendingReloadIfPossible();
+                return;
+              }
+
+              if (!shouldReloadForEvents(data.events)) {
+                hideBanner();
+                pendingReload = false;
+                return;
+              }
+
+              pendingReload = true;
+              applyPendingReloadIfPossible();
+            })
+            .catch(function() {
+              // Falha silenciosa para nao impactar a tela atual.
+            })
+            .finally(function() {
+              isRequestRunning = false;
+            });
+        }
+
+        document.addEventListener('visibilitychange', function() {
+          applyPendingReloadIfPossible();
+        });
+
+        markFormsDirty();
+        pollRealtimeStatus();
+        setInterval(function() {
+          pollRealtimeStatus();
+          applyPendingReloadIfPossible();
+        }, pollIntervalMs);
+      })();
+
       function urlBase64ToUint8Array(base64String) {
         const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
         const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');

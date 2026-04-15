@@ -101,6 +101,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
+    window.addEventListener('agendadia:chat-updated', function() {
+        fetchMessages();
+    });
+
     formEl.addEventListener('submit', function(e) {
         e.preventDefault();
         var content = (inputEl.value || '').trim();
