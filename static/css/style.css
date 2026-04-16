@@ -662,6 +662,11 @@ main {
     background-color: #d7e6e2;
 }
 
+.appointment.appointment-done {
+    background-color: #d7e6e2 !important;
+    border: 1px solid #9fb8b2;
+}
+
 .appointment-confirmed {
     background-color: #c8e6c9 !important;
     border: 1px solid #43a047;
@@ -766,6 +771,13 @@ main {
 
 .modal-appointment-done {
     opacity: 0.72;
+}
+
+.modal-appointment.modal-appointment-done {
+    background-color: #d7e6e2 !important;
+    border: 1px solid #9fb8b2;
+    border-radius: 6px;
+    padding: 0.7rem;
 }
 
 .modal-appointment:last-child {
