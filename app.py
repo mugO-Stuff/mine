@@ -94,7 +94,10 @@ class Agendamento(db.Model):
     @property
     def esta_concluido(self):
         campos_finais = [self.sala_cirurgica, self.quarto]
-        return self.data < date.today() and all(valor and str(valor).strip() for valor in campos_finais)
+        if not all(valor and str(valor).strip() for valor in campos_finais):
+            return False
+        data_hora_agendamento = datetime.combine(self.data, self.hora)
+        return data_hora_agendamento < datetime.now()
 
     @property
     def cirurgia_confirmavel(self):
