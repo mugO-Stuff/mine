@@ -26,6 +26,78 @@ document.addEventListener('DOMContentLoaded', function() {
     var lastId = 0;
     var firstLoadDone = false;
 
+    // --- Permissão de notificação: solicita na primeira interação do utilizador ---
+    function requestNotifPermission() {
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    }
+    document.addEventListener('click', requestNotifPermission, { once: true });
+
+    // --- Som via Web Audio API (sem ficheiro externo) ---
+    var audioCtx = null;
+    function getAudioCtx() {
+        if (!audioCtx) {
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            } catch(e) { return null; }
+        }
+        // Retoma contexto suspenso (política de autoplay)
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume().catch(function(){});
+        }
+        return audioCtx;
+    }
+    // Desbloqueia o contexto de áudio na primeira interação
+    document.addEventListener('click', function() { getAudioCtx(); }, { once: true });
+
+    function playNotificationSound() {
+        var ctx = getAudioCtx();
+        if (!ctx) return;
+        try {
+            var gain = ctx.createGain();
+            gain.connect(ctx.destination);
+
+            // Dois tons suaves: "ding-dong"
+            [880, 660].forEach(function(freq, i) {
+                var osc = ctx.createOscillator();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.18);
+                osc.connect(gain);
+                gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.18);
+                gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + i * 0.18 + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.18 + 0.35);
+                osc.start(ctx.currentTime + i * 0.18);
+                osc.stop(ctx.currentTime + i * 0.18 + 0.4);
+            });
+        } catch(e) {}
+    }
+
+    // --- Notificação desktop / mobile ---
+    function showChatNotification(senderName, preview) {
+        var title = 'Nova mensagem de ' + senderName;
+        var body = preview.length > 80 ? preview.slice(0, 77) + '…' : preview;
+
+        // Prefere Service Worker (funciona em background / mobile PWA)
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({
+                type: 'SHOW_NOTIFICATION',
+                title: title,
+                body: body
+            });
+            return;
+        }
+        // Fallback: Notification API directa
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(title, {
+                body: body,
+                icon: '/static/icons/icon-192x192.png',
+                tag: 'chat-message',
+                renotify: true
+            });
+        }
+    }
+
     function persistLastRead() {
         if (lastId > 0) {
             localStorage.setItem(readKey, String(lastId));
@@ -81,12 +153,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (hasIncoming) {
                     noticeEl.style.display = '';
-                    if ('Notification' in window) {
-                        if (Notification.permission === 'granted') {
-                            new Notification('Nova mensagem no chat');
-                        } else if (Notification.permission === 'default') {
-                            Notification.requestPermission();
-                        }
+                    playNotificationSound();
+                    // Monta preview com o remetente da primeira mensagem nova
+                    var firstNew = data.messages.find(function(m) { return !m.is_me; });
+                    if (firstNew) {
+                        showChatNotification(
+                            firstNew.sender_nome,
+                            firstNew.content
+                        );
                     }
                 }
 

@@ -78,6 +78,24 @@ self.addEventListener('fetch', event => {
   }
 });
 
+// Permite que a página principal solicite uma notificação via postMessage
+// Útil para notificar mesmo quando a aba não está em foco (mobile/PWA)
+self.addEventListener('message', event => {
+  if (!event.data || event.data.type !== 'SHOW_NOTIFICATION') return;
+
+  const title = event.data.title || 'AgendaDia';
+  const options = {
+    body: event.data.body || '',
+    icon: '/static/icons/icon-192x192.png',
+    badge: '/static/icons/icon-32x32.png',
+    tag: 'chat-message',
+    renotify: true,
+    data: { url: '/chat' }
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
 self.addEventListener('push', event => {
   let data = {};
   try {
