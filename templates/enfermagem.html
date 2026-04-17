@@ -33,7 +33,7 @@
             <div class="appointments-list">
                 {% if regs %}
                     {% for reg in regs %}
-                        <div class="appointment" data-observacao="{{ reg.observacao or '-' }}">
+                        <div class="appointment" data-observacao="{{ reg.observacao or '-' }}" data-edit-url="{{ url_for('enfermagem_edit', id=reg.id, year=year, month=month) }}">
                             <h1 class="enfermagem-dimensionamento-title">Dimensionamento Equipe Enfermagem:</h1>
                             <p><strong>Observação</strong></p>
                             <p>{{ reg.observacao or 'Sem observações.' }}</p>
@@ -87,6 +87,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     const item = document.createElement('div');
                     item.className = 'modal-appointment';
                     item.innerHTML = '<h1 class="enfermagem-dimensionamento-title">Dimensionamento Equipe Enfermagem:</h1><p><strong>Observação:</strong> ' + itemSource.dataset.observacao + '</p>';
+                    if (itemSource.dataset.editUrl) {
+                        const editBtn = document.createElement('a');
+                        editBtn.href = itemSource.dataset.editUrl;
+                        editBtn.className = 'internalacao-btn';
+                        editBtn.textContent = 'Editar';
+                        item.appendChild(editBtn);
+                    }
                     modalBody.appendChild(item);
                 });
             }
