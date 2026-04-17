@@ -3,12 +3,14 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func, text, UniqueConstraint, inspect
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, time
 from collections import Counter
 import calendar
 import os
 import json
 import secrets
+import base64
+from urllib.parse import urlencode
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
@@ -54,6 +56,16 @@ VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
 VAPID_CLAIMS_SUB = os.environ.get('VAPID_CLAIMS_SUB', 'mailto:admin@agendadia.local')
 PUSH_DISPATCH_TOKEN = os.environ.get('PUSH_DISPATCH_TOKEN', '')
 REALTIME_EVENT_RETENTION = int(os.environ.get('REALTIME_EVENT_RETENTION', '800'))
+LITE_PLAN_PRICE = 89
+LITE_SCOPE_ITEMS = [
+    {'nome': 'Cadastro de pacientes', 'status': 'ativo', 'descricao': 'Cadastro e historico por paciente.'},
+    {'nome': 'Agenda basica com integracao Google', 'status': 'ativo', 'descricao': 'Atalho para enviar cirurgia ao Google Calendar.'},
+    {'nome': 'Confirmacoes via WhatsApp', 'status': 'ativo', 'descricao': 'Mensagem pronta para confirmar cirurgia com o paciente.'},
+    {'nome': 'Prontuario personalizavel', 'status': 'ativo', 'descricao': 'Protocolos, observacoes e dados de internacao editaveis.'},
+    {'nome': 'Financeiro simples', 'status': 'ativo', 'descricao': 'Comprovantes, valores e status de pagamento.'},
+    {'nome': 'Relatorios basicos', 'status': 'ativo', 'descricao': 'Visao mensal por medicos e procedimentos.'},
+    {'nome': 'Backup', 'status': 'ativo', 'descricao': 'Exportacao do banco em JSON pelo admin.'},
+]
 
 # Models
 class User(db.Model):
@@ -201,6 +213,10 @@ def inject_user():
         current_user=current_user,
         asset_version=ASSET_VERSION,
         build_comprovante_url=build_comprovante_url,
+        build_google_calendar_url=build_google_calendar_url,
+        build_whatsapp_confirmation_url=build_whatsapp_confirmation_url,
+        lite_scope_items=LITE_SCOPE_ITEMS,
+        lite_plan_price=LITE_PLAN_PRICE,
         csrf_token=get_csrf_token,
     )
 
@@ -292,6 +308,93 @@ def get_brazil_holidays(year):
         easter + timedelta(days=60): 'Corpus Christi',
     }
     return holidays
+
+def normalize_phone_digits(raw_phone):
+    raw_value = (raw_phone or '').strip()
+    digits = ''.join(ch for ch in raw_value if ch.isdigit())
+    if len(digits) in (10, 11):
+        digits = f'55{digits}'
+    return digits
+
+def build_whatsapp_url(raw_phone, message=''):
+    digits = normalize_phone_digits(raw_phone)
+    if not digits:
+        return ''
+
+    if message:
+        query = urlencode({'text': message})
+        return f'https://wa.me/{digits}?{query}'
+
+    return f'https://wa.me/{digits}'
+
+def build_whatsapp_confirmation_url(agendamento):
+    if not agendamento:
+        return ''
+
+    paciente = (agendamento.nome_paciente or '').strip()
+    procedimento = (agendamento.procedimento or '').strip()
+    protocolo = (agendamento.protocolo or '').strip()
+    data_hora = f"{agendamento.data.strftime('%d/%m/%Y')} as {agendamento.hora.strftime('%H:%M')}"
+    saudacao = f'Ola, {paciente}.' if paciente else 'Ola.'
+
+    message_lines = [
+        saudacao,
+        f'Confirmando sua cirurgia de {procedimento} para {data_hora}.',
+    ]
+    if protocolo:
+        message_lines.append(f'Protocolo: {protocolo}.')
+    message_lines.append('Responda com CONFIRMADO para seguirmos com o preparo.')
+
+    return build_whatsapp_url(agendamento.whatsapp_paciente, '\n'.join(message_lines))
+
+def build_google_calendar_url(agendamento):
+    if not agendamento or not agendamento.data or not agendamento.hora:
+        return ''
+
+    start_dt = datetime.combine(agendamento.data, agendamento.hora)
+    end_dt = start_dt + timedelta(hours=1)
+    title = f"Cirurgia - {(agendamento.nome_paciente or '').strip() or 'Paciente'}"
+
+    detail_lines = [
+        f"Paciente: {agendamento.nome_paciente or '-'}",
+        f"Medico: {agendamento.nome_medico or '-'} | CRM: {agendamento.crm_medico or '-'}",
+        f"Procedimento: {agendamento.procedimento or '-'}",
+        f"CID: {agendamento.cid_procedimento or '-'}",
+    ]
+    if agendamento.protocolo:
+        detail_lines.append(f"Protocolo: {agendamento.protocolo}")
+    if agendamento.observacao:
+        detail_lines.append(f"Observacao: {agendamento.observacao}")
+
+    params = urlencode({
+        'action': 'TEMPLATE',
+        'text': title,
+        'dates': f"{start_dt.strftime('%Y%m%dT%H%M%S')}/{end_dt.strftime('%Y%m%dT%H%M%S')}",
+        'details': '\n'.join(detail_lines),
+    })
+    return f'https://calendar.google.com/calendar/render?{params}'
+
+def serialize_value_for_backup(value):
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, time):
+        return value.isoformat()
+    if isinstance(value, (bytes, bytearray)):
+        return base64.b64encode(value).decode('ascii')
+    return value
+
+def serialize_model_backup(model_class):
+    records = model_class.query.order_by(model_class.id.asc()).all()
+    serialized = []
+    for record in records:
+        item = {}
+        for column in model_class.__table__.columns:
+            raw = getattr(record, column.name)
+            item[column.name] = serialize_value_for_backup(raw)
+        serialized.append(item)
+    return serialized
 
 def user_can_manage_agendamentos(user):
     return bool(user and (user.cargo == 'admin' or user.grau in (2, 3)))
@@ -1337,6 +1440,42 @@ def admin():
         monthly_stats=monthly_stats,
         current_year=current_year,
     )
+
+@app.route('/admin/backup/download')
+def admin_backup_download():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if not user or (user.cargo != 'admin' and user.grau != 3):
+        flash('Acesso negado')
+        return redirect(url_for('index'))
+
+    backup_payload = {
+        'generated_at': datetime.utcnow().isoformat() + 'Z',
+        'app': 'AgendaDia',
+        'tables': {
+            'user': serialize_model_backup(User),
+            'medico': serialize_model_backup(Medico),
+            'procedimento': serialize_model_backup(Procedimento),
+            'agendamento': serialize_model_backup(Agendamento),
+            'comprovante': serialize_model_backup(Comprovante),
+            'escala_anestesista': serialize_model_backup(EscalaAnestesista),
+            'enfermagem_registro': serialize_model_backup(EnfermagemRegistro),
+            'chat_message': serialize_model_backup(ChatMessage),
+            'push_subscription': serialize_model_backup(PushSubscription),
+            'push_reminder_log': serialize_model_backup(PushReminderLog),
+            'realtime_event': serialize_model_backup(RealtimeEvent),
+        },
+    }
+
+    timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    response = app.response_class(
+        response=json.dumps(backup_payload, ensure_ascii=False, indent=2),
+        mimetype='application/json',
+    )
+    response.headers['Content-Disposition'] = f'attachment; filename=agendadia_backup_{timestamp}.json'
+    return response
 
 @app.route('/admin/add_medico', methods=['POST'])
 def add_medico():

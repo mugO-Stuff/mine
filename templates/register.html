@@ -1,19 +1,39 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Cadastro</h2>
-<form method="post">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <label for="nome">Nome (o mesmo para login):</label>
-    <input type="text" id="nome" name="nome" value="{{ request.form.get('nome', '') }}" required>
-    <p class="form-helper-text">Guarde este nome e use exatamente igual ao entrar no sistema.</p>
-    <label for="cargo">Cargo:</label>
-    <input type="text" id="cargo" name="cargo" value="{{ request.form.get('cargo', '') }}" required>
-    <label for="senha">Senha (somente numeros, minimo 6 digitos):</label>
-    <input type="password" id="senha" name="senha" inputmode="numeric" pattern="[0-9]{6,}" title="Use apenas numeros (minimo 6)." required>
-    <button type="submit">Cadastrar</button>
-</form>
-<p>Já tem conta? <a href="{{ url_for('login') }}">Entrar</a></p>
+<div class="auth-layout">
+    <section class="auth-panel">
+        <h2>Cadastro</h2>
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label for="nome">Nome (o mesmo para login):</label>
+            <input type="text" id="nome" name="nome" value="{{ request.form.get('nome', '') }}" required>
+            <p class="form-helper-text">Guarde este nome e use exatamente igual ao entrar no sistema.</p>
+            <label for="cargo">Cargo:</label>
+            <input type="text" id="cargo" name="cargo" value="{{ request.form.get('cargo', '') }}" required>
+            <label for="senha">Senha (somente numeros, minimo 6 digitos):</label>
+            <input type="password" id="senha" name="senha" inputmode="numeric" pattern="[0-9]{6,}" title="Use apenas numeros (minimo 6)." required>
+            <button type="submit">Cadastrar</button>
+        </form>
+        <p>Já tem conta? <a href="{{ url_for('login') }}">Entrar</a></p>
+    </section>
+
+    <aside class="lite-scope-card" aria-label="Plano Lite">
+        <span class="lite-tag">LITE</span>
+        <p class="lite-intro">Para comecar com organizacao e eficiencia.</p>
+        <p class="lite-price"><span>R$</span>{{ lite_plan_price }}</p>
+        <p class="lite-price-caption">/mes por profissional de saude</p>
+        <a class="lite-cta" href="{{ url_for('login') }}">Entrar agora</a>
+        <ul class="lite-feature-list">
+            {% for item in lite_scope_items %}
+                <li>
+                    <span class="lite-check">✓</span>
+                    <span>{{ item.nome }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+    </aside>
+</div>
 {% with messages = get_flashed_messages() %}
     {% if messages %}
         <ul>

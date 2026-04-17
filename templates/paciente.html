@@ -51,6 +51,17 @@
             </div>
         </div>
 
+        <div class="patient-header-actions lite-quick-actions">
+            {% set whatsapp_confirm_url = build_whatsapp_confirmation_url(ultimo_agendamento) %}
+            {% if whatsapp_confirm_url %}
+                <a class="secondary-btn" href="{{ whatsapp_confirm_url }}" target="_blank" rel="noopener noreferrer">Confirmar via WhatsApp</a>
+            {% endif %}
+            {% set google_calendar_url = build_google_calendar_url(ultimo_agendamento) %}
+            {% if google_calendar_url %}
+                <a class="secondary-btn" href="{{ google_calendar_url }}" target="_blank" rel="noopener noreferrer">Enviar para Google Agenda</a>
+            {% endif %}
+        </div>
+
         <div class="patient-observation">
             <span class="detail-label">Último Agendamento</span>
             <div class="patient-details-grid">

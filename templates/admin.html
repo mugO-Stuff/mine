@@ -12,6 +12,7 @@
     <a class="admin-card" href="#medicos">Cadastrar médico</a>
     <a class="admin-card" href="#procedimentos">Cadastrar procedimento</a>
     <a class="admin-card" href="#contagem">Contagem mensal</a>
+    <a class="admin-card" href="#backup">Backup</a>
 </div>
 <div class="admin-grid">
     <section id="pendentes">
@@ -236,6 +237,12 @@
             <span class="dash-dots" id="dashDots"></span>
             <button class="dash-arrow" id="dashNext">&#8594;</button>
         </div>
+    </section>
+
+    <section id="backup">
+        <h3>Backup do Sistema</h3>
+        <p>Exporta um JSON completo das tabelas principais para armazenamento seguro.</p>
+        <a class="secondary-btn" href="{{ url_for('admin_backup_download') }}">Baixar backup agora</a>
     </section>
 </div>
 {% with messages = get_flashed_messages() %}
