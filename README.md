@@ -79,6 +79,12 @@ http://127.0.0.1:5000
 - VAPID_PRIVATE_KEY: chave privada para push.
 - VAPID_CLAIMS_SUB: identificacao do emissor de push.
 - PUSH_DISPATCH_TOKEN: token para rota de disparo de push.
+- GOOGLE_CLIENT_ID: Client ID OAuth 2.0 do Google.
+- GOOGLE_CLIENT_SECRET: Client Secret OAuth 2.0 do Google.
+- GOOGLE_REDIRECT_URI: URL de callback OAuth (opcional). Se vazio, usa /google-calendar/callback com URL externa automatica.
+- GOOGLE_CALENDAR_TIMEZONE: timezone usada ao criar eventos (padrao America/Sao_Paulo).
+
+Observacao: os tokens do Google Calendar ficam persistidos por usuario no banco e so sao removidos quando a conta e desconectada manualmente.
 
 ## Rotas Principais
 
@@ -101,6 +107,10 @@ http://127.0.0.1:5000
 - GET/POST /comprovante/editar/<int:comprovante_id>
 - GET /pacientes
 - GET /api/agendamento-por-procedimento
+- GET /google-calendar/connect/<int:agendamento_id>
+- GET /google-calendar/callback
+- GET /google-calendar/create-event/<int:agendamento_id>
+- POST /google-calendar/disconnect
 
 ### Admin
 

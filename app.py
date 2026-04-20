@@ -10,6 +10,8 @@ import os
 import json
 import secrets
 import base64
+import urllib.request
+import urllib.error
 from urllib.parse import urlencode
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -56,6 +58,14 @@ VAPID_PRIVATE_KEY = os.environ.get('VAPID_PRIVATE_KEY', '')
 VAPID_CLAIMS_SUB = os.environ.get('VAPID_CLAIMS_SUB', 'mailto:admin@agendadia.local')
 PUSH_DISPATCH_TOKEN = os.environ.get('PUSH_DISPATCH_TOKEN', '')
 REALTIME_EVENT_RETENTION = int(os.environ.get('REALTIME_EVENT_RETENTION', '800'))
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '').strip()
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '').strip()
+GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', '').strip()
+GOOGLE_CALENDAR_TIMEZONE = os.environ.get('GOOGLE_CALENDAR_TIMEZONE', 'America/Sao_Paulo').strip() or 'America/Sao_Paulo'
+GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events'
+GOOGLE_OAUTH_AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
+GOOGLE_OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token'
+GOOGLE_CALENDAR_EVENTS_URL = 'https://www.googleapis.com/calendar/v3/calendars/primary/events'
 LITE_PLAN_PRICE = 89
 LITE_SCOPE_ITEMS = [
     {'nome': 'Cadastro de pacientes', 'status': 'ativo', 'descricao': 'Cadastro e historico por paciente.'},
@@ -204,6 +214,17 @@ class RealtimeEvent(db.Model):
     payload = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
+class GoogleCalendarCredential(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True, index=True)
+    access_token = db.Column(db.Text)
+    refresh_token = db.Column(db.Text)
+    token_type = db.Column(db.String(40), default='Bearer')
+    scope = db.Column(db.Text)
+    expires_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 @app.context_processor
 def inject_user():
     current_user = None
@@ -214,6 +235,7 @@ def inject_user():
         asset_version=ASSET_VERSION,
         build_comprovante_url=build_comprovante_url,
         build_google_calendar_url=build_google_calendar_url,
+        is_google_calendar_connected=is_google_calendar_connected,
         build_whatsapp_confirmation_url=build_whatsapp_confirmation_url,
         lite_scope_items=LITE_SCOPE_ITEMS,
         lite_plan_price=LITE_PLAN_PRICE,
@@ -373,6 +395,201 @@ def build_google_calendar_url(agendamento):
         'details': '\n'.join(detail_lines),
     })
     return f'https://calendar.google.com/calendar/render?{params}'
+
+def get_google_oauth_redirect_uri():
+    if GOOGLE_REDIRECT_URI:
+        return GOOGLE_REDIRECT_URI
+    return url_for('google_calendar_callback', _external=True)
+
+def get_google_calendar_tokens():
+    user_id = session.get('user_id')
+    if not user_id:
+        return None
+
+    credential = GoogleCalendarCredential.query.filter_by(user_id=user_id).first()
+    if not credential:
+        legacy_tokens = session.get('google_calendar_tokens')
+        if isinstance(legacy_tokens, dict) and (legacy_tokens.get('access_token') or '').strip():
+            store_google_calendar_tokens(legacy_tokens)
+            session.pop('google_calendar_tokens', None)
+            credential = GoogleCalendarCredential.query.filter_by(user_id=user_id).first()
+        else:
+            return None
+
+    return {
+        'access_token': (credential.access_token or '').strip(),
+        'refresh_token': (credential.refresh_token or '').strip(),
+        'token_type': (credential.token_type or 'Bearer').strip() or 'Bearer',
+        'scope': (credential.scope or '').strip(),
+        'expires_at': int(credential.expires_at.timestamp()) if credential.expires_at else None,
+    }
+
+def store_google_calendar_tokens(token_payload):
+    token_payload = token_payload or {}
+    existing = get_google_calendar_tokens() or {}
+    refresh_token = (token_payload.get('refresh_token') or '').strip() or existing.get('refresh_token')
+    user_id = session.get('user_id')
+    if not user_id:
+        return
+
+    try:
+        expires_in = int(token_payload.get('expires_in', 0) or 0)
+    except (TypeError, ValueError):
+        expires_in = 0
+
+    credential = GoogleCalendarCredential.query.filter_by(user_id=user_id).first()
+    if not credential:
+        credential = GoogleCalendarCredential(user_id=user_id)
+        db.session.add(credential)
+
+    credential.access_token = (token_payload.get('access_token') or '').strip()
+    credential.refresh_token = refresh_token
+    credential.token_type = (token_payload.get('token_type') or 'Bearer').strip() or 'Bearer'
+    credential.scope = (token_payload.get('scope') or '').strip()
+    credential.expires_at = datetime.utcnow() + timedelta(seconds=expires_in) if expires_in > 0 else None
+    db.session.commit()
+
+def clear_google_calendar_tokens():
+    user_id = session.get('user_id')
+    if user_id:
+        GoogleCalendarCredential.query.filter_by(user_id=user_id).delete()
+        db.session.commit()
+
+    session.pop('google_calendar_tokens', None)
+    session.pop('google_oauth_state', None)
+    session.pop('google_oauth_agendamento_id', None)
+    session.pop('google_oauth_return_params', None)
+
+def is_google_calendar_connected():
+    tokens = get_google_calendar_tokens()
+    return bool(tokens and (tokens.get('access_token') or '').strip())
+
+def http_form_post_json(url, payload):
+    data = urlencode(payload).encode('utf-8')
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={'Content-Type': 'application/x-www-form-urlencoded'},
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as response:
+            body = response.read().decode('utf-8')
+            return json.loads(body or '{}'), None
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode('utf-8', errors='ignore') if exc else ''
+        try:
+            payload = json.loads(raw or '{}')
+            message = payload.get('error_description') or payload.get('error') or raw
+        except Exception:
+            message = raw or str(exc)
+        return None, message
+    except Exception as exc:
+        return None, str(exc)
+
+def google_calendar_refresh_access_token(tokens):
+    refresh_token = (tokens or {}).get('refresh_token', '').strip()
+    if not refresh_token or not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        return None, 'Sem refresh token ou credenciais OAuth do Google.'
+
+    payload, error = http_form_post_json(
+        GOOGLE_OAUTH_TOKEN_URL,
+        {
+            'client_id': GOOGLE_CLIENT_ID,
+            'client_secret': GOOGLE_CLIENT_SECRET,
+            'refresh_token': refresh_token,
+            'grant_type': 'refresh_token',
+        },
+    )
+    if error:
+        return None, error
+
+    store_google_calendar_tokens(payload)
+    updated = get_google_calendar_tokens() or {}
+    access_token = (updated.get('access_token') or '').strip()
+    if not access_token:
+        return None, 'Nao foi possivel renovar o token de acesso do Google Calendar.'
+    return access_token, None
+
+def ensure_google_calendar_access_token():
+    tokens = get_google_calendar_tokens()
+    if not tokens:
+        return None, 'Conta Google nao conectada.'
+
+    access_token = (tokens.get('access_token') or '').strip()
+    if not access_token:
+        return None, 'Token de acesso ausente. Reconecte sua conta Google.'
+
+    expires_at = tokens.get('expires_at')
+    now = int(datetime.utcnow().timestamp())
+    if expires_at and isinstance(expires_at, int) and (expires_at - now) <= 60:
+        return google_calendar_refresh_access_token(tokens)
+
+    return access_token, None
+
+def google_calendar_api_post(url, access_token, payload):
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode('utf-8'),
+        headers={
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {access_token}',
+        },
+        method='POST',
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=20) as response:
+            body = response.read().decode('utf-8')
+            return json.loads(body or '{}'), None
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode('utf-8', errors='ignore') if exc else ''
+        try:
+            payload = json.loads(raw or '{}')
+            message = payload.get('error', {}).get('message') or raw
+        except Exception:
+            message = raw or str(exc)
+        return None, message
+    except Exception as exc:
+        return None, str(exc)
+
+def build_google_calendar_event_payload(agendamento):
+    start_dt = datetime.combine(agendamento.data, agendamento.hora)
+    end_dt = start_dt + timedelta(hours=1)
+
+    detail_lines = [
+        f"Paciente: {agendamento.nome_paciente or '-'}",
+        f"Medico: {agendamento.nome_medico or '-'} | CRM: {agendamento.crm_medico or '-'}",
+        f"Procedimento: {agendamento.procedimento or '-'}",
+        f"CID: {agendamento.cid_procedimento or '-'}",
+    ]
+    if agendamento.protocolo:
+        detail_lines.append(f"Protocolo: {agendamento.protocolo}")
+    if agendamento.observacao:
+        detail_lines.append(f"Observacao: {agendamento.observacao}")
+
+    location_parts = [
+        f"Sala: {agendamento.sala_cirurgica}" if agendamento.sala_cirurgica else '',
+        f"Quarto: {agendamento.quarto}" if agendamento.quarto else '',
+    ]
+    location = ' | '.join(part for part in location_parts if part)
+
+    payload = {
+        'summary': f"Cirurgia - {(agendamento.nome_paciente or '').strip() or 'Paciente'}",
+        'description': '\n'.join(detail_lines),
+        'start': {
+            'dateTime': start_dt.isoformat(),
+            'timeZone': GOOGLE_CALENDAR_TIMEZONE,
+        },
+        'end': {
+            'dateTime': end_dt.isoformat(),
+            'timeZone': GOOGLE_CALENDAR_TIMEZONE,
+        },
+    }
+    if location:
+        payload['location'] = location
+
+    return payload
 
 def serialize_value_for_backup(value):
     if isinstance(value, datetime):
@@ -1160,7 +1377,152 @@ def register():
 
 @app.route('/logout')
 def logout():
+    session.pop('google_oauth_state', None)
+    session.pop('google_oauth_agendamento_id', None)
+    session.pop('google_oauth_return_params', None)
     session.pop('user_id', None)
+    return redirect(url_for('index'))
+
+@app.route('/google-calendar/connect/<int:agendamento_id>')
+def google_calendar_connect(agendamento_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if not user or not user_can_manage_agendamentos(user):
+        flash('Acesso negado.')
+        return redirect(url_for('index'))
+
+    agendamento = Agendamento.query.get_or_404(agendamento_id)
+    return_params = build_paciente_return_params(agendamento=agendamento, source=request.args)
+
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        flash('Google Calendar indisponivel: configure GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET.')
+        return redirect(url_for('paciente', id=agendamento.id, **return_params))
+
+    state = secrets.token_urlsafe(32)
+    session['google_oauth_state'] = state
+    session['google_oauth_agendamento_id'] = agendamento.id
+    session['google_oauth_return_params'] = return_params
+
+    auth_params = urlencode({
+        'client_id': GOOGLE_CLIENT_ID,
+        'redirect_uri': get_google_oauth_redirect_uri(),
+        'response_type': 'code',
+        'scope': GOOGLE_CALENDAR_SCOPE,
+        'access_type': 'offline',
+        'include_granted_scopes': 'true',
+        'prompt': 'consent',
+        'state': state,
+    })
+    return redirect(f'{GOOGLE_OAUTH_AUTHORIZE_URL}?{auth_params}')
+
+@app.route('/google-calendar/callback')
+def google_calendar_callback():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    expected_state = (session.get('google_oauth_state') or '').strip()
+    received_state = (request.args.get('state') or '').strip()
+    if not expected_state or not received_state or not secrets.compare_digest(expected_state, received_state):
+        flash('Falha na validacao da conexao com Google Calendar (state invalido).')
+        return redirect(url_for('index'))
+
+    oauth_error = (request.args.get('error') or '').strip()
+    if oauth_error:
+        flash(f'Conexao com Google Calendar cancelada: {oauth_error}.')
+        return redirect(url_for('index'))
+
+    code = (request.args.get('code') or '').strip()
+    agendamento_id = session.pop('google_oauth_agendamento_id', None)
+    return_params = session.pop('google_oauth_return_params', None) or {}
+    session.pop('google_oauth_state', None)
+
+    if not code:
+        flash('Nao foi recebido codigo de autorizacao do Google.')
+        if agendamento_id:
+            return redirect(url_for('paciente', id=agendamento_id, **return_params))
+        return redirect(url_for('index'))
+
+    token_payload, token_error = http_form_post_json(
+        GOOGLE_OAUTH_TOKEN_URL,
+        {
+            'code': code,
+            'client_id': GOOGLE_CLIENT_ID,
+            'client_secret': GOOGLE_CLIENT_SECRET,
+            'redirect_uri': get_google_oauth_redirect_uri(),
+            'grant_type': 'authorization_code',
+        },
+    )
+    if token_error:
+        flash(f'Erro ao conectar Google Calendar: {token_error}')
+        if agendamento_id:
+            return redirect(url_for('paciente', id=agendamento_id, **return_params))
+        return redirect(url_for('index'))
+
+    store_google_calendar_tokens(token_payload)
+    flash('Conta Google conectada com sucesso.')
+
+    if agendamento_id:
+        return redirect(url_for('google_calendar_create_event', agendamento_id=agendamento_id, **return_params))
+
+    return redirect(url_for('index'))
+
+@app.route('/google-calendar/create-event/<int:agendamento_id>')
+def google_calendar_create_event(agendamento_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if not user or not user_can_manage_agendamentos(user):
+        flash('Acesso negado.')
+        return redirect(url_for('index'))
+
+    agendamento = Agendamento.query.get_or_404(agendamento_id)
+    return_params = build_paciente_return_params(agendamento=agendamento, source=request.args)
+
+    if not is_google_calendar_connected():
+        return redirect(url_for('google_calendar_connect', agendamento_id=agendamento.id, **return_params))
+
+    access_token, token_error = ensure_google_calendar_access_token()
+    if token_error:
+        flash(f'Nao foi possivel autenticar no Google Calendar: {token_error}')
+        clear_google_calendar_tokens()
+        return redirect(url_for('google_calendar_connect', agendamento_id=agendamento.id, **return_params))
+
+    event_payload = build_google_calendar_event_payload(agendamento)
+    created_event, event_error = google_calendar_api_post(GOOGLE_CALENDAR_EVENTS_URL, access_token, event_payload)
+    if event_error:
+        flash(f'Falha ao criar evento no Google Calendar: {event_error}')
+        return redirect(url_for('paciente', id=agendamento.id, **return_params))
+
+    event_link = (created_event or {}).get('htmlLink')
+    if event_link:
+        flash(f'Evento criado no Google Calendar com sucesso: {event_link}')
+    else:
+        flash('Evento criado no Google Calendar com sucesso.')
+
+    return redirect(url_for('paciente', id=agendamento.id, **return_params))
+
+@app.route('/google-calendar/disconnect', methods=['POST'])
+def google_calendar_disconnect():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    user = User.query.get(session['user_id'])
+    if not user or not user_can_manage_agendamentos(user):
+        flash('Acesso negado.')
+        return redirect(url_for('index'))
+
+    agendamento_id = request.form.get('agendamento_id', type=int)
+    clear_google_calendar_tokens()
+    flash('Conta Google desconectada deste navegador.')
+
+    if agendamento_id:
+        agendamento = Agendamento.query.get(agendamento_id)
+        if agendamento:
+            return redirect(url_for('paciente', id=agendamento.id, **build_paciente_return_params(agendamento=agendamento, source=request.form)))
+
     return redirect(url_for('index'))
 
 @app.route('/chat')
@@ -2168,6 +2530,12 @@ def pacientes():
             if any(ag_id in agendamento_ids_comprovante for ag_id in ids):
                 pacientes_map[key]['tem_comprovante'] = True
 
+    total_pacientes_sistema = len({
+        (nome or '').strip().lower()
+        for (nome,) in db.session.query(Agendamento.nome_paciente).all()
+        if (nome or '').strip()
+    })
+
     pacientes_data = list(pacientes_map.values())
 
     def paciente_data_key(paciente_item):
@@ -2184,9 +2552,13 @@ def pacientes():
     else:
         pacientes_data.sort(key=lambda p: p['nome_paciente'].lower())
 
+    total_pacientes = len(pacientes_data)
+
     return render_template(
         'pacientes.html',
         pacientes=pacientes_data,
+        total_pacientes=total_pacientes,
+        total_pacientes_sistema=total_pacientes_sistema,
         search=search_raw,
         filtro_data=filtro_data,
         mes_filtro=mes_filtro,

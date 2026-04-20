@@ -56,9 +56,28 @@
             {% if whatsapp_confirm_url %}
                 <a class="secondary-btn" href="{{ whatsapp_confirm_url }}" target="_blank" rel="noopener noreferrer">Confirmar via WhatsApp</a>
             {% endif %}
+            {% if can_manage %}
+                {% if is_google_calendar_connected() %}
+                    <a class="secondary-btn" href="{{ url_for('google_calendar_create_event', agendamento_id=ultimo_agendamento.id, year=return_context.year, month=return_context.month, view=return_context.view, medico=return_context.medico, protocolo=return_context.protocolo, paciente_busca=return_context.paciente_busca, q=return_context.q) }}">Sincronizar no Google Agenda</a>
+                    <form method="post" action="{{ url_for('google_calendar_disconnect') }}" class="inline-action-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="agendamento_id" value="{{ ultimo_agendamento.id }}">
+                        <input type="hidden" name="context_year" value="{{ return_context.year }}">
+                        <input type="hidden" name="context_month" value="{{ return_context.month }}">
+                        <input type="hidden" name="context_view" value="{{ return_context.view }}">
+                        <input type="hidden" name="context_medico" value="{{ return_context.medico or '' }}">
+                        <input type="hidden" name="context_protocolo" value="{{ return_context.protocolo or '' }}">
+                        <input type="hidden" name="context_paciente_busca" value="{{ return_context.paciente_busca or '' }}">
+                        <input type="hidden" name="context_q" value="{{ return_context.q or '' }}">
+                        <button type="submit" class="secondary-btn">Desconectar Google</button>
+                    </form>
+                {% else %}
+                    <a class="secondary-btn" href="{{ url_for('google_calendar_connect', agendamento_id=ultimo_agendamento.id, year=return_context.year, month=return_context.month, view=return_context.view, medico=return_context.medico, protocolo=return_context.protocolo, paciente_busca=return_context.paciente_busca, q=return_context.q) }}">Conectar Google Agenda</a>
+                {% endif %}
+            {% endif %}
             {% set google_calendar_url = build_google_calendar_url(ultimo_agendamento) %}
             {% if google_calendar_url %}
-                <a class="secondary-btn" href="{{ google_calendar_url }}" target="_blank" rel="noopener noreferrer">Enviar para Google Agenda</a>
+                <a class="secondary-btn" href="{{ google_calendar_url }}" target="_blank" rel="noopener noreferrer">Abrir rascunho manual</a>
             {% endif %}
         </div>
 

@@ -1362,6 +1362,12 @@ main {
     margin: 0;
 }
 
+.patients-count {
+    margin: 0.35rem 0 0;
+    color: #2f5d56;
+    font-weight: 600;
+}
+
 .patients-search-form {
     max-width: 100%;
     margin: 0;
@@ -1395,6 +1401,26 @@ main {
     flex-wrap: wrap;
     align-items: center;
     margin-bottom: 1rem;
+}
+
+.patient-title-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+}
+
+.patient-order-badge {
+    min-width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #004d40;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 10px rgba(0, 77, 64, 0.18);
 }
 
 .patient-history-header h3 {
