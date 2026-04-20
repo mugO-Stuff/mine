@@ -892,6 +892,8 @@ def ensure_sqlite_legacy_columns():
                 conn.execute(text("ALTER TABLE agendamento ADD COLUMN quarto VARCHAR(50)"))
             if 'protocolo' not in agendamento_columns:
                 conn.execute(text("ALTER TABLE agendamento ADD COLUMN protocolo VARCHAR(50)"))
+            if 'google_calendar_event_id' not in agendamento_columns:
+                conn.execute(text("ALTER TABLE agendamento ADD COLUMN google_calendar_event_id VARCHAR(255)"))
 
         if comprovante_columns and 'arquivo_comprovante' not in comprovante_columns:
             conn.execute(text("ALTER TABLE comprovante ADD COLUMN arquivo_comprovante VARCHAR(255)"))
@@ -935,6 +937,16 @@ def ensure_database_ready(create_default_admin=True, update_admin_password=False
     db.create_all()
     ensure_sqlite_legacy_columns()
     ensure_password_column_capacity()
+    
+    inspector = inspect(db.engine)
+    try:
+        agendamento_columns = {col['name'] for col in inspector.get_columns('agendamento')}
+        if 'google_calendar_event_id' not in agendamento_columns:
+            with db.engine.begin() as conn:
+                conn.execute(text("ALTER TABLE agendamento ADD COLUMN google_calendar_event_id VARCHAR(255)"))
+    except Exception:
+        pass
+    
     normalizar_numero_procedimento()
     ensure_user_password_hashes()
     os.makedirs(os.path.join(app.static_folder, UPLOAD_COMPROVANTES_FOLDER), exist_ok=True)

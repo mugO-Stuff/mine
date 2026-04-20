@@ -86,6 +86,11 @@ http://127.0.0.1:5000
 
 Observacao: os tokens do Google Calendar ficam persistidos por usuario no banco e so sao removidos quando a conta e desconectada manualmente.
 
+Google Calendar Event Sync:
+- Cada evento criado no Google Calendar e armazenado seu ID no banco.
+- Se voce sincronizar novamente o mesmo agendamento, o sistema vai atualizar o evento existente em vez de criar um duplicado.
+- O status do botao de sincronizacao muda para "Atualizar no Google Agenda" quando ja existe evento sincronizado.
+
 ## Rotas Principais
 
 ### Publicas

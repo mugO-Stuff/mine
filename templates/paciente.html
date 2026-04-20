@@ -58,7 +58,13 @@
             {% endif %}
             {% if can_manage %}
                 {% if is_google_calendar_connected() %}
-                    <a class="secondary-btn" href="{{ url_for('google_calendar_create_event', agendamento_id=ultimo_agendamento.id, year=return_context.year, month=return_context.month, view=return_context.view, medico=return_context.medico, protocolo=return_context.protocolo, paciente_busca=return_context.paciente_busca, q=return_context.q) }}">Sincronizar no Google Agenda</a>
+                    <a class="secondary-btn" href="{{ url_for('google_calendar_create_event', agendamento_id=ultimo_agendamento.id, year=return_context.year, month=return_context.month, view=return_context.view, medico=return_context.medico, protocolo=return_context.protocolo, paciente_busca=return_context.paciente_busca, q=return_context.q) }}">
+                        {% if ultimo_agendamento.google_calendar_event_id %}
+                            ✓ Atualizar no Google Agenda
+                        {% else %}
+                            Sincronizar no Google Agenda
+                        {% endif %}
+                    </a>
                     <form method="post" action="{{ url_for('google_calendar_disconnect') }}" class="inline-action-form">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="agendamento_id" value="{{ ultimo_agendamento.id }}">
