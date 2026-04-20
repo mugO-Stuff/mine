@@ -111,6 +111,7 @@ class Agendamento(db.Model):
     sala_cirurgica = db.Column(db.String(50))
     quarto = db.Column(db.String(50))
     protocolo = db.Column(db.String(50))
+    google_calendar_event_id = db.Column(db.String(255))
     comprovantes = db.relationship('Comprovante', backref='agendamento', lazy=True, cascade='all, delete-orphan')
 
     @property
@@ -536,6 +537,32 @@ def google_calendar_api_post(url, access_token, payload):
             'Authorization': f'Bearer {access_token}',
         },
         method='POST',
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=20) as response:
+            body = response.read().decode('utf-8')
+            return json.loads(body or '{}'), None
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode('utf-8', errors='ignore') if exc else ''
+        try:
+            payload = json.loads(raw or '{}')
+            message = payload.get('error', {}).get('message') or raw
+        except Exception:
+            message = raw or str(exc)
+        return None, message
+    except Exception as exc:
+        return None, str(exc)
+
+def google_calendar_api_patch(url, access_token, payload):
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode('utf-8'),
+        headers={
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {access_token}',
+        },
+        method='PATCH',
     )
 
     try:
@@ -1491,16 +1518,31 @@ def google_calendar_create_event(agendamento_id):
         return redirect(url_for('google_calendar_connect', agendamento_id=agendamento.id, **return_params))
 
     event_payload = build_google_calendar_event_payload(agendamento)
-    created_event, event_error = google_calendar_api_post(GOOGLE_CALENDAR_EVENTS_URL, access_token, event_payload)
+    existing_event_id = (agendamento.google_calendar_event_id or '').strip()
+
+    if existing_event_id:
+        update_url = f'{GOOGLE_CALENDAR_EVENTS_URL}/{existing_event_id}'
+        result_event, event_error = google_calendar_api_patch(update_url, access_token, event_payload)
+        action_msg = 'atualizado'
+    else:
+        result_event, event_error = google_calendar_api_post(GOOGLE_CALENDAR_EVENTS_URL, access_token, event_payload)
+        action_msg = 'criado'
+
     if event_error:
-        flash(f'Falha ao criar evento no Google Calendar: {event_error}')
+        flash(f'Falha ao {action_msg} evento no Google Calendar: {event_error}')
         return redirect(url_for('paciente', id=agendamento.id, **return_params))
 
-    event_link = (created_event or {}).get('htmlLink')
+    event_id = (result_event or {}).get('id')
+    event_link = (result_event or {}).get('htmlLink')
+
+    if event_id and event_id != existing_event_id:
+        agendamento.google_calendar_event_id = event_id
+        db.session.commit()
+
     if event_link:
-        flash(f'Evento criado no Google Calendar com sucesso: {event_link}')
+        flash(f'Evento {action_msg} no Google Calendar: <a href="{event_link}" target="_blank" rel="noopener noreferrer">{event_link}</a>', 'message_with_link')
     else:
-        flash('Evento criado no Google Calendar com sucesso.')
+        flash(f'Evento {action_msg} no Google Calendar com sucesso.')
 
     return redirect(url_for('paciente', id=agendamento.id, **return_params))
 
